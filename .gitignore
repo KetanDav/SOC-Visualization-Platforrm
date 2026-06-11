@@ -1,0 +1,8 @@
+node_modules
+frontend/dist
+backend/dist
+shared/dist
+*.log
+.DS_Store
+*.tsbuildinfo
+data/normalized/
