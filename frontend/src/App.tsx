@@ -119,10 +119,21 @@ export default function App() {
           </p>
         </div>
         <div className="hero-stats">
-          <StatCard label="Assets" value={payload?.assets.length ?? 0} />
-          <StatCard label="Flows" value={payload?.flows.length ?? 0} />
-          <StatCard label="Events" value={payload?.events.length ?? 0} />
-          <StatCard label="Alerts" value={payload?.alerts.length ?? 0} />
+          <StatCard label="Assets" value={payload?.assets.length ?? 0} icon="🖥" />
+          <StatCard label="Flows" value={payload?.flows.length ?? 0} icon="⬆" />
+          <StatCard label="Events" value={payload?.events.length ?? 0} icon="📋" />
+          <StatCard label="Alerts" value={payload?.alerts.length ?? 0} icon="🚨" accent />
+          <StatCard
+            label="High-Risk"
+            value={payload?.alerts.filter(a => (a.risk_score ?? 0) >= 75).length ?? 0}
+            icon="⚡"
+            accent
+          />
+          <StatCard
+            label="Unique IPs"
+            value={payload ? new Set([...payload.flows.map(f => f.src_ip), ...payload.flows.map(f => f.dst_ip)]).size : 0}
+            icon="🌐"
+          />
         </div>
       </header>
 
@@ -163,11 +174,12 @@ export default function App() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value, icon, accent }: { label: string; value: number; icon?: string; accent?: boolean }) {
   return (
-    <div className="stat-card">
+    <div className="stat-card" style={accent ? { borderColor: 'rgba(255,93,115,0.3)', background: 'rgba(255,93,115,0.06)' } : undefined}>
+      {icon && <span style={{ fontSize: '1.1rem' }}>{icon}</span>}
+      <strong style={accent ? { color: '#ff5d73' } : undefined}>{value}</strong>
       <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   );
 }

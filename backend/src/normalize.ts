@@ -46,6 +46,8 @@ export const normalizeTelemetry = (sources: LoadedSourceRows) => {
   const flows: Flow[] = [];
   const events: EventRecord[] = [];
   const alerts: AlertRecord[] = [];
+  // Track SNA flow IDs so Arista correlated entries can enrich instead of duplicate
+  const snaFlowIdMap = new Map<string, number>(); // sna flow_id -> flows[] index
 
   sources.qradar.forEach((row, index) => {
     const timestamp = toTimestamp(row.start_time);
@@ -121,6 +123,8 @@ export const normalizeTelemetry = (sources: LoadedSourceRows) => {
     const effectiveRisk = risk ?? threat;
 
     if (srcIp && dstIp) {
+      const flowIndex = flows.length;
+      const snaFlowId = toStringValue(row.flow_id);
       flows.push({
         id: `sna-flow-${index + 1}`,
         timestamp,
@@ -140,6 +144,9 @@ export const normalizeTelemetry = (sources: LoadedSourceRows) => {
         sourceVendor: 'sna',
         raw: row
       });
+      if (snaFlowId) {
+        snaFlowIdMap.set(snaFlowId, flowIndex);
+      }
       connectAssets(assets, srcIp, dstIp, {
         hostname: toStringValue(row.src_hostname),
         mac: toStringValue(row.src_mac),
@@ -182,8 +189,23 @@ export const normalizeTelemetry = (sources: LoadedSourceRows) => {
     const bytes = toNumberValue(row.bytes) ?? 0;
     const packets = toNumberValue(row.packets) ?? 0;
     const risk = toNumberValue(row.risk_score);
+    const aristaFlowId = toStringValue(row.flow_id); // e.g. "SN-2001"
 
-    if (srcIp && dstIp) {
+    // If this Arista alert references an SNA flow, enrich that flow instead of duplicating
+    const correlatedSnaIndex = aristaFlowId ? snaFlowIdMap.get(aristaFlowId) : undefined;
+    if (correlatedSnaIndex !== undefined) {
+      // Enrich existing SNA flow with Arista metadata
+      const existing = flows[correlatedSnaIndex];
+      flows[correlatedSnaIndex] = {
+        ...existing,
+        ja3: existing.ja3 ?? toStringValue(row.ja3),
+        sni: existing.sni ?? toStringValue(row.sni),
+        dns_query: existing.dns_query ?? toStringValue(row.dns_query),
+        // Escalate risk to the higher of the two
+        risk_score: Math.max(existing.risk_score ?? 0, risk ?? 0) || existing.risk_score
+      };
+    } else if (srcIp && dstIp) {
+      // No matching SNA flow — add as standalone Arista flow
       flows.push({
         id: `arista-flow-${index + 1}`,
         timestamp,
@@ -243,6 +265,12 @@ export const normalizeTelemetry = (sources: LoadedSourceRows) => {
     assets: sortedAssets,
     flows: sortedFlows,
     events: sortedEvents,
-    alerts: sortedAlerts
+    alerts: sortedAlerts,
+    summary: {
+      qradarRows: sources.qradar.length,
+      snaRows: sources.sna.length,
+      aristaRows: sources.arista.length,
+      totalRows: sources.qradar.length + sources.sna.length + sources.arista.length
+    }
   };
 };
