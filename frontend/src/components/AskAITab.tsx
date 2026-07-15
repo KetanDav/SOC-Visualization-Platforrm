@@ -34,33 +34,90 @@ const SUGGESTED: string[] = [
   'What events involve credential access?',
 ];
 
+function val(v: string | number | undefined | null): string {
+  return (v === undefined || v === null || v === '') ? '-' : String(v);
+}
+
+function rawFields(raw: Record<string, string>): string {
+  const entries = Object.entries(raw).filter(([, v]) => v && v.trim());
+  if (!entries.length) return '';
+  return '    RAW: ' + entries.map(([k, v]) => `${k}=${v}`).join(' | ');
+}
+
 function buildContext(flows: Flow[], events: EventRecord[], alerts: AlertRecord[], assets: Asset[]): string {
   const fmtBytes = (n: number) => n >= 1_048_576 ? (n / 1_048_576).toFixed(1) + ' MB' : n >= 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
 
-  const topFlows = [...flows].sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0)).slice(0, 15);
-  const topAlerts = [...alerts].sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0)).slice(0, 15);
-  const topEvents = [...events].sort((a, b) => {
-    const rank = (s?: string) => s?.toLowerCase() === 'critical' ? 4 : s?.toLowerCase() === 'high' ? 3 : s?.toLowerCase() === 'medium' ? 2 : 1;
-    return rank(b.severity) - rank(a.severity);
-  }).slice(0, 15);
-  const topAssets = [...assets].sort((a, b) => b.communicationVolume - a.communicationVolume).slice(0, 15);
+  // Assets: send ALL of them with every field — this is the network topology / NAC data
+  const assetLines = assets.map(a => [
+    `  IP: ${a.ip}`,
+    `    hostname:${val(a.hostname)} | mac:${val(a.mac)} | country:${val(a.country)} | asn:${val(a.asn)}`,
+    `    username:${val(a.username)} | deviceType:${val(a.deviceType)} | vendors:${a.sourceVendor.join(',')}`,
+    `    switchIp:${val(a.switchIp)} | switchPort:${val(a.switchPort)} | switchPortType:${val(a.switchPortType)} | vlan:${val(a.vlan)}`,
+    `    securityGroup:${val(a.securityGroup)} | policySet:${val(a.policySet)} | authRule:${val(a.authRule)}`,
+    `    postureStatus:${val(a.postureStatus)} | endpointProfile:${val(a.endpointProfile)} | auditSession:${val(a.auditSessionId)}`,
+    `    riskScore:${val(a.riskScore)} | volume:${fmtBytes(a.communicationVolume)}`,
+  ].join('\n'));
 
-  return `
-=== SOC TELEMETRY SNAPSHOT ===
-Totals: ${flows.length} flows, ${events.length} events, ${alerts.length} alerts, ${assets.length} assets
+  // Flows: up to 100 by risk, including raw
+  const topFlows = [...flows].sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0)).slice(0, 100);
+  const flowLines = topFlows.map(f => {
+    const raw = rawFields(f.raw);
+    return [
+      `  ${f.timestamp} | ${f.src_ip}:${val(f.src_port)} → ${f.dst_ip}:${val(f.dst_port)}`,
+      `    proto:${val(f.protocol)} | app:${val(f.application)} | ${fmtBytes(f.bytes)} | pkts:${f.packets} | dir:${val(f.direction)} | risk:${val(f.risk_score)}`,
+      f.sni ? `    sni:${f.sni}` : '',
+      f.dns_query ? `    dns:${f.dns_query}` : '',
+      f.ja3 ? `    ja3:${f.ja3}` : '',
+      raw,
+    ].filter(Boolean).join('\n');
+  });
 
---- TOP FLOWS (by risk) ---
-${topFlows.map(f => `  ${f.src_ip}:${f.src_port ?? '?'} → ${f.dst_ip}:${f.dst_port ?? '?'} | ${f.protocol ?? '?'} | ${fmtBytes(f.bytes)} | risk:${f.risk_score ?? 0} | ${f.application ?? ''}`).join('\n') || '  (none)'}
+  // Events: up to 100 by severity, including raw
+  const sevRank = (s?: string) => s?.toLowerCase() === 'critical' ? 4 : s?.toLowerCase() === 'high' ? 3 : s?.toLowerCase() === 'medium' ? 2 : 1;
+  const topEvents = [...events].sort((a, b) => sevRank(b.severity) - sevRank(a.severity)).slice(0, 100);
+  const eventLines = topEvents.map(e => {
+    const raw = rawFields(e.raw);
+    return [
+      `  ${e.timestamp} | [${val(e.severity)}] ${e.event_name}`,
+      `    src:${val(e.src_ip)} → dst:${val(e.dst_ip)} | user:${val(e.username)} | cat:${val(e.category)}`,
+      e.domain ? `    domain:${e.domain}` : '',
+      e.url ? `    url:${e.url}` : '',
+      e.process_name ? `    process:${e.process_name}` : '',
+      e.filename ? `    file:${e.filename}` : '',
+      e.raw_event ? `    raw_event:${e.raw_event}` : '',
+      raw,
+    ].filter(Boolean).join('\n');
+  });
 
---- TOP ALERTS ---
-${topAlerts.map(a => `  [${a.severity ?? '?'}] ${a.alert_name} | ${a.src_ip ?? '?'} → ${a.dst_ip ?? '?'} | risk:${a.risk_score ?? 0} | ioc:${a.ioc_match ?? 'no'} | malware:${a.malware_family ?? 'none'}`).join('\n') || '  (none)'}
+  // Alerts: up to 100 by risk, including raw
+  const topAlerts = [...alerts].sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0)).slice(0, 100);
+  const alertLines = topAlerts.map(a => {
+    const raw = rawFields(a.raw);
+    return [
+      `  ${a.timestamp} | [${val(a.severity)}] ${a.alert_name}`,
+      `    src:${val(a.src_ip)} → dst:${val(a.dst_ip)} | risk:${val(a.risk_score)} | anomaly:${val(a.anomaly_score)}`,
+      a.ioc_match && a.ioc_match !== 'no' ? `    ioc:${a.ioc_match}` : '',
+      a.malware_family ? `    malware:${a.malware_family}` : '',
+      raw,
+    ].filter(Boolean).join('\n');
+  });
 
---- TOP EVENTS ---
-${topEvents.map(e => `  [${e.severity ?? '?'}] ${e.event_name} | ${e.src_ip ?? '?'} → ${e.dst_ip ?? '?'} | user:${e.username ?? '-'} | cat:${e.category ?? '-'} | domain:${e.domain ?? '-'}`).join('\n') || '  (none)'}
-
---- TOP ASSETS (by volume) ---
-${topAssets.map(a => `  ${a.ip} | host:${a.hostname ?? '-'} | ${fmtBytes(a.communicationVolume)} | risk:${a.riskScore ?? '-'} | vendors:${a.sourceVendor.join(',')}`).join('\n') || '  (none)'}
-`.trim();
+  return [
+    `=== SOC TELEMETRY SNAPSHOT ===`,
+    `Totals: ${flows.length} flows, ${events.length} events, ${alerts.length} alerts, ${assets.length} assets`,
+    ``,
+    `--- ASSETS (ALL ${assets.length} — includes switch/port/VLAN/NAC details) ---`,
+    assetLines.join('\n\n') || '  (none)',
+    ``,
+    `--- FLOWS (top ${topFlows.length} of ${flows.length} by risk) ---`,
+    flowLines.join('\n\n') || '  (none)',
+    ``,
+    `--- EVENTS (top ${topEvents.length} of ${events.length} by severity) ---`,
+    eventLines.join('\n\n') || '  (none)',
+    ``,
+    `--- ALERTS (top ${topAlerts.length} of ${alerts.length} by risk) ---`,
+    alertLines.join('\n\n') || '  (none)',
+  ].join('\n');
 }
 
 function ProviderPicker({ anchorRef, current, onPick, onClose }: {
