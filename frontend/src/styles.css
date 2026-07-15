@@ -70,6 +70,14 @@ select {
   white-space: nowrap;
 }
 
+.top-bar-credit {
+  font-size: 0.65rem;
+  color: var(--muted);
+  opacity: 0.55;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
 .top-bar-stats {
   display: flex;
   gap: 6px;

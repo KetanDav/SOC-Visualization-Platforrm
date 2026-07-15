@@ -376,6 +376,7 @@ export default function App() {
     <div className="app-shell">
       <div className="top-bar">
         <span className="top-bar-brand">SOC Telemetry</span>
+        <span className="top-bar-credit">made by Ketan &amp; Saaransh</span>
         {isCustomData && (
           <span className="custom-data-badge">● Custom Data</span>
         )}
