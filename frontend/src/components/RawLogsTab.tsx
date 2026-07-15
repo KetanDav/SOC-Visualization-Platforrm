@@ -191,7 +191,20 @@ export function RawLogsTab({ activeQuery }: RawLogsTabProps) {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: cfg.color }}>{cfg.description}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: cfg.color }}>{cfg.description}</span>
+                {isUploaded !== null && (
+                  <span style={{
+                    fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em',
+                    padding: '2px 7px', borderRadius: 5,
+                    background: isUploaded ? 'rgba(57,255,143,0.1)' : 'rgba(130,155,190,0.08)',
+                    border: `1px solid ${isUploaded ? 'rgba(57,255,143,0.3)' : 'rgba(130,155,190,0.2)'}`,
+                    color: isUploaded ? '#39ff8f' : '#8fa1bc',
+                  }}>
+                    {isUploaded ? '● Custom Upload' : '○ Default Data'}
+                  </span>
+                )}
+              </div>
               {ipFromQuery && (
                 <span style={{ fontSize: '0.72rem', color: '#ffb84d' }}>
                   🔍 Filtered by IP: <code style={{ color: '#ffb84d' }}>{ipFromQuery}</code>
@@ -266,25 +279,13 @@ export function RawLogsTab({ activeQuery }: RawLogsTabProps) {
             </div>
           )}
 
-          {!loading && !error && isUploaded === false && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              <span style={{ fontSize: '2rem' }}>📂</span>
-              <span style={{ color: '#8fa1bc', fontSize: '0.9rem', textAlign: 'center' }}>
-                No uploaded data for <strong style={{ color: cfg.color }}>{cfg.label}</strong>
-              </span>
-              <span style={{ color: '#6b7a99', fontSize: '0.8rem', textAlign: 'center' }}>
-                Use <strong style={{ color: '#dce6f5' }}>↑ Upload CSV</strong> in the top bar to load your own logs for this vendor.
-              </span>
-            </div>
-          )}
-
-          {!loading && !error && isUploaded === true && columns.length === 0 && (
+          {!loading && !error && columns.length === 0 && (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8fa1bc', fontSize: '0.9rem' }}>
               No rows found{ipFromQuery ? ` for IP ${ipFromQuery}` : ''} in {cfg.label}
             </div>
           )}
 
-          {!loading && !error && isUploaded === true && columns.length > 0 && (
+          {!loading && !error && columns.length > 0 && (
             <>
               <div className="table-shell" style={{ flex: 1, minHeight: 0 }}>
                 <table className="data-table" style={{ fontSize: '0.76rem' }}>
