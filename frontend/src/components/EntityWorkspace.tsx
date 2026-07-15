@@ -8,6 +8,7 @@ import { DetailsPanel } from './DetailsPanel';
 import { GraphTab } from './GraphTab';
 import { IpActivityTab } from './IpActivityTab';
 import { RATReportModal } from './RATReport';
+import { AskAITab } from './AskAITab';
 import { RawLogsTab } from './RawLogsTab';
 import { SankeyChart } from './SankeyChart';
 import { SequencePanel } from './SequencePanel';
@@ -20,7 +21,7 @@ function fmtBytes(n: number): string {
   return n + ' B';
 }
 
-export type WorkspaceTab = 'dashboard' | 'home' | 'assets' | 'flows' | 'events' | 'alerts' | 'graph' | 'activity' | 'rawlogs';
+export type WorkspaceTab = 'dashboard' | 'home' | 'assets' | 'flows' | 'events' | 'alerts' | 'graph' | 'activity' | 'rawlogs' | 'askai';
 
 interface FilteredData {
   assets: Asset[];
@@ -59,6 +60,7 @@ const tabs: Array<{ id: WorkspaceTab; label: string }> = [
   { id: 'graph', label: 'Graph' },
   { id: 'activity', label: 'IP Activity' },
   { id: 'rawlogs', label: '📄 Raw Logs' },
+  { id: 'askai', label: '✦ Ask AI' },
 ];
 
 export function ViewTabs({ activeTab, onChange }: { activeTab: WorkspaceTab; onChange: (tab: WorkspaceTab) => void }) {
@@ -746,6 +748,17 @@ export function EntityWorkspace({ activeTab, filtered, selectedIp, setSelectedIp
 
   if (activeTab === 'rawlogs') {
     return <RawLogsTab activeQuery={activeQuery} />;
+  }
+
+  if (activeTab === 'askai') {
+    return (
+      <AskAITab
+        flows={filtered.flows}
+        events={filtered.events}
+        alerts={filtered.alerts}
+        assets={filtered.assets}
+      />
+    );
   }
 
   // Alerts tab

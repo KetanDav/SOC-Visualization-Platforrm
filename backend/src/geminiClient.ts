@@ -11,6 +11,8 @@ export interface GeminiPromptInput {
   userMessage: string;
 }
 
+// ── Structured (JSON) analysis calls ─────────────────────────────────────────
+
 export async function chatWithGemini(input: GeminiPromptInput | string[]): Promise<GeminiResponse> {
   const settings = getGeminiAnalysisSettings();
   if (!settings.apiKey) {
@@ -65,9 +67,7 @@ export async function chatWithGemini(input: GeminiPromptInput | string[]): Promi
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
@@ -77,7 +77,7 @@ export async function chatWithGemini(input: GeminiPromptInput | string[]): Promi
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.warn(`[gemini] Model ${cleanModel} returned HTTP ${response.status}, falling back to next candidate...`);
+        console.warn(`[gemini] Model ${cleanModel} returned HTTP ${response.status}, falling back...`);
         lastError = new Error(`Gemini returned ${response.status}: ${errorText}`);
         continue;
       }
@@ -90,11 +90,7 @@ export async function chatWithGemini(input: GeminiPromptInput | string[]): Promi
         continue;
       }
 
-      return {
-        content: text.trim(),
-        model: cleanModel,
-        durationMs,
-      };
+      return { content: text.trim(), model: cleanModel, durationMs };
     } catch (err) {
       clearTimeout(timer);
       if (err instanceof Error && err.name === 'AbortError') {
@@ -102,9 +98,56 @@ export async function chatWithGemini(input: GeminiPromptInput | string[]): Promi
       } else {
         lastError = err instanceof Error ? err : new Error(String(err));
       }
-      console.warn(`[gemini] Model ${cleanModel} threw error (${lastError.message}), falling back to next candidate...`);
+      console.warn(`[gemini] Model ${cleanModel} threw error (${lastError.message}), falling back...`);
     }
   }
 
   throw lastError ?? new Error('All Gemini models failed.');
+}
+
+// ── Free-form (plain text) conversational calls ───────────────────────────────
+
+export async function chatWithGeminiFreeForm(input: GeminiPromptInput): Promise<GeminiResponse> {
+  const settings = getGeminiAnalysisSettings();
+  if (!settings.apiKey) throw new Error('GEMINI_API_KEY is not set');
+
+  const candidateModels = Array.from(new Set([
+    'gemini-flash-lite-latest',
+    'gemini-flash-latest',
+    settings.model,
+  ]));
+
+  let lastError: Error | null = null;
+
+  for (const rawModel of candidateModels) {
+    const model = rawModel.replace(/^models\//, '');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${settings.apiKey}`;
+    const start = Date.now();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), settings.timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: input.systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: input.userMessage }] }],
+          generationConfig: { temperature: 0.4, maxOutputTokens: 1600 },
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) { lastError = new Error(`HTTP ${res.status}`); continue; }
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) { lastError = new Error('Empty response'); continue; }
+      return { content: text.trim(), model, durationMs: Date.now() - start };
+    } catch (err) {
+      clearTimeout(timer);
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  throw lastError ?? new Error('All Gemini models failed');
 }

@@ -8,6 +8,8 @@ import { dataDirectory, getUploadedVendors, loadSourceRows, loadSourceRowsWithUp
 import { normalizeTelemetry } from './normalize.js';
 import { exportNormalizedCsv } from './exportNormalized.js';
 import { runIncidentAnalysis } from './incidentAnalysis.js';
+import { chatWithGeminiFreeForm } from './geminiClient.js';
+import { chatWithOllama } from './ollamaClient.js';
 import { getOllamaAnalysisSettings, getActiveModelName } from './analysisConfig.js';
 import { buildZip } from './zipBuilder.js';
 import type { IncidentAnalysisContextPackage } from '@soc/telemetry-shared';
@@ -234,6 +236,53 @@ app.get('/api/raw', async (request, response) => {
     }
 
     response.json({ vendor, totalRows: rows.length, rows, isUploaded });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    response.status(500).json({ ok: false, message });
+  }
+});
+
+// ── Natural language query endpoint ──
+app.post('/api/query', async (request, response) => {
+  try {
+    const { question, context, provider = 'gemini' } = request.body as {
+      question: string;
+      context: string;
+      provider?: 'ollama' | 'gemini';
+    };
+
+    if (!question?.trim()) {
+      response.status(400).json({ ok: false, message: 'question is required' });
+      return;
+    }
+
+    const systemPrompt = `You are a senior SOC (Security Operations Center) analyst assistant.
+The user is viewing a live telemetry dashboard. You will be given a snapshot of the current filtered dataset and a question.
+Answer clearly, concisely, and accurately using only the data provided.
+Use bullet points for lists. Highlight IPs, hostnames, or alert names using backticks.
+If the answer cannot be determined from the provided data, say so honestly.
+Do NOT hallucinate data that isn't in the snapshot.`;
+
+    const userMessage = `=== TELEMETRY DATA ===\n${context}\n\n=== QUESTION ===\n${question}`;
+
+    if (provider === 'gemini') {
+      const result = await chatWithGeminiFreeForm({ systemPrompt, userMessage });
+      response.json({ ok: true, answer: result.content, model: result.model, durationMs: result.durationMs });
+    } else {
+      const result = await chatWithOllama({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+      });
+      // Ollama may return JSON-wrapped text; try to extract plain text
+      let answer = result.content;
+      try {
+        const parsed = JSON.parse(answer) as Record<string, unknown>;
+        answer = (parsed.answer ?? parsed.text ?? parsed.response ?? answer) as string;
+      } catch { /* not JSON, use raw */ }
+      response.json({ ok: true, answer, model: result.model, durationMs: result.durationMs });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     response.status(500).json({ ok: false, message });
