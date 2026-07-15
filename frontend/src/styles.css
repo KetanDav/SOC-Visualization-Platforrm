@@ -85,6 +85,28 @@ select {
   flex: 1;
 }
 
+.doc-btn {
+  padding: 5px 14px;
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.doc-btn:hover {
+  background: var(--green);
+  color: #000;
+}
+
 .export-csv-btn {
   padding: 5px 14px;
   background: transparent;

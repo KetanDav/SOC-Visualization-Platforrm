@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { AlertRecord, Asset, EventRecord, Flow } from '@soc/telemetry-shared';
+import { renderMarkdown } from '../lib/markdown';
 
 type Provider = 'ollama' | 'gemini';
 
@@ -235,7 +236,12 @@ export function AskAITab({ flows, events, alerts, assets }: AskAITabProps) {
         body: JSON.stringify({ question: question.trim(), context, provider }),
         signal: abortRef.current.signal,
       });
-      const data = await res.json() as { ok: boolean; answer?: string; model?: string; durationMs?: number; message?: string };
+      const rawText = await res.text();
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json') || rawText.trim().startsWith('<')) {
+        throw new Error(`Backend server returned an HTML/non-JSON response (status ${res.status}). Ensure the backend server on port 3001 is running and your API keys are configured.`);
+      }
+      const data = JSON.parse(rawText) as { ok: boolean; answer?: string; model?: string; durationMs?: number; message?: string };
       if (!data.ok || !data.answer) throw new Error(data.message ?? 'No answer returned');
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
@@ -362,9 +368,10 @@ export function AskAITab({ flows, events, alerts, assets }: AskAITabProps) {
                   border: `1px solid ${msg.role === 'user' ? 'rgba(76,201,240,0.15)' : msg.error ? 'rgba(248,113,113,0.2)' : 'rgba(130,155,190,0.1)'}`,
                   color: msg.error ? '#fca5a5' : '#dce6f5',
                   fontSize: '0.87rem', lineHeight: 1.65,
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  whiteSpace: msg.role === 'assistant' && !msg.error ? 'normal' : 'pre-wrap',
+                  wordBreak: 'break-word',
                 }}>
-                  {msg.content}
+                  {msg.role === 'assistant' && !msg.error ? renderMarkdown(msg.content) : msg.content}
                 </div>
                 {msg.role === 'assistant' && (msg.model || msg.durationMs) && (
                   <div style={{ fontSize: '0.65rem', color: '#3a4f68', paddingLeft: 4 }}>

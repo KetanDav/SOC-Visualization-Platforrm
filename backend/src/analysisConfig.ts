@@ -1,3 +1,28 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function reloadEnvIfNeeded() {
+  try {
+    const envPath = path.resolve(__dirname, '../../.env');
+    const lines = readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const idx = trimmed.indexOf('=');
+      if (idx !== -1) {
+        const key = trimmed.slice(0, idx).trim();
+        const val = trimmed.slice(idx + 1).trim();
+        if (key) process.env[key] = val;
+      }
+    }
+  } catch {
+    // ignore if .env missing
+  }
+}
+
 // ── Ollama defaults ───────────────────────────────────────────────────────────
 const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen3:4b';
@@ -26,6 +51,7 @@ function normalizeBaseUrl(value: string | undefined, fallback: string): string {
 export type AnalysisProvider = 'ollama' | 'gemini';
 
 export function getAnalysisProvider(): AnalysisProvider {
+  reloadEnvIfNeeded();
   const raw = process.env.ANALYSIS_PROVIDER?.trim().toLowerCase();
   return raw === 'gemini' ? 'gemini' : 'ollama';
 }
@@ -40,6 +66,7 @@ export interface OllamaAnalysisSettings {
 }
 
 export function getOllamaAnalysisSettings(): OllamaAnalysisSettings {
+  reloadEnvIfNeeded();
   return {
     baseUrl: normalizeBaseUrl(process.env.OLLAMA_BASE_URL, DEFAULT_OLLAMA_BASE_URL),
     model: process.env.OLLAMA_MODEL?.trim() || DEFAULT_OLLAMA_MODEL,
@@ -59,6 +86,7 @@ export interface GeminiAnalysisSettings {
 }
 
 export function getGeminiAnalysisSettings(): GeminiAnalysisSettings {
+  reloadEnvIfNeeded();
   return {
     apiKey: process.env.GEMINI_API_KEY?.trim() || '',
     model: process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL,

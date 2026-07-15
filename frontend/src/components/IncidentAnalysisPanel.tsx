@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { IncidentAnalysisResponse, IncidentAnalysisTarget } from '@soc/telemetry-shared';
+import { renderMarkdown, renderInline } from '../lib/markdown';
 
 type Provider = 'ollama' | 'gemini';
 
@@ -86,7 +87,7 @@ function Section({ title, items, icon }: { title: string; items: string[]; icon:
                     fontSize: '0.82rem', color: '#c8d8ee', lineHeight: 1.55,
                 }}>
                     <span style={{ color: '#3d5470', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>›</span>
-                    {item}
+                    <div>{renderInline(item)}</div>
                 </div>
             ))}
         </div>
@@ -431,7 +432,7 @@ export function IncidentAnalysisPanel({ target, response, loading, error, onAnal
                                     Incident Summary
                                 </div>
                                 <div style={{ color: '#e7eefb', fontSize: '0.9rem', lineHeight: 1.7 }}>
-                                    {analysis.incidentSummary}
+                                    {renderMarkdown(analysis.incidentSummary)}
                                 </div>
                             </div>
 
@@ -478,7 +479,7 @@ export function IncidentAnalysisPanel({ target, response, loading, error, onAnal
                                 {analysis.analystNotes && (
                                     <div style={{ padding: '11px 13px', borderRadius: 11, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(130,155,190,0.07)' }}>
                                         <div style={{ fontSize: '0.62rem', color: '#6b82a0', textTransform: 'uppercase', letterSpacing: '0.09em', fontWeight: 700, marginBottom: 7 }}>💬 Analyst Notes</div>
-                                        <div style={{ color: '#b8cce0', fontSize: '0.83rem', lineHeight: 1.65, fontStyle: 'italic' }}>{analysis.analystNotes}</div>
+                                        <div style={{ color: '#b8cce0', fontSize: '0.83rem', lineHeight: 1.65, fontStyle: 'italic' }}>{renderMarkdown(analysis.analystNotes)}</div>
                                     </div>
                                 )}
                             </div>

@@ -320,6 +320,11 @@ app.get('/api/export/csv', async (_request, response) => {
   }
 });
 
+app.get(['/DOCUMENTATION.html', '/docs'], (_req, res) => {
+  const docPath = path.resolve(__dirname, '../../DOCUMENTATION.html');
+  res.sendFile(docPath);
+});
+
 if (isProduction) {
   const frontendDist = path.resolve(__dirname, '../../frontend/dist');
   app.use(express.static(frontendDist));

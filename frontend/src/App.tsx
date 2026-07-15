@@ -345,7 +345,12 @@ export default function App() {
         signal: controller.signal,
       });
 
-      const data = (await response.json()) as IncidentAnalysisResponse;
+      const rawText = await response.text();
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json') || rawText.trim().startsWith('<')) {
+        throw new Error(`Backend server returned HTML (status ${response.status}) instead of JSON. Check that the backend service on port 3001 is active and API keys are set.`);
+      }
+      const data = JSON.parse(rawText) as IncidentAnalysisResponse;
 
       if (controller.signal.aborted) {
         return;
@@ -385,6 +390,15 @@ export default function App() {
             ✕ Clear / Reset Default
           </button>
         )}
+        <a
+          className="doc-btn"
+          href="/DOCUMENTATION.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View full system documentation and architecture guide"
+        >
+          📖 Docs
+        </a>
         <a
           className="export-csv-btn"
           href="/api/export/csv"

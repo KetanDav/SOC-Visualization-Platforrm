@@ -11,6 +11,14 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:3001',
         changeOrigin: true
+      },
+      '/DOCUMENTATION.html': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true
+      },
+      '/docs': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true
       }
     }
   }

@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SOC Visualization Platform — Documentation</title>
+<meta name="description" content="Comprehensive documentation for the SOC Visualization Platform: full-stack React 19 + Express.js security operations centre dashboard with AI-powered incident analysis." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════════ */
+:root {
+  --bg:          #07101f;
+  --panel:       #0e1e38;
+  --panel2:      #122040;
+  --border:      rgba(76,201,240,0.12);
+  --border2:     rgba(76,201,240,0.25);
+  --cyan:        #4cc9f0;
+  --violet:      #818cf8;
+  --green:       #34d399;
+  --amber:       #fbbf24;
+  --red:         #f87171;
+  --crimson:     #ff5d73;
+  --text:        #dce6f5;
+  --muted:       #6b82a0;
+  --dim:         #3d5068;
+  --sidebar-w:   270px;
+  --radius:      10px;
+  --radius-lg:   16px;
+  --font-mono:   'JetBrains Mono', monospace;
+  --font-sans:   'Inter', sans-serif;
+  --transition:  0.2s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 15px;
+  display: flex;
+  min-height: 100vh;
+}
+h1,h2,h3,h4,h5 { font-weight: 700; line-height: 1.3; color: var(--text); }
+h2 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+h3 { font-size: 1.25rem; margin-bottom: 0.4rem; color: var(--cyan); }
+h4 { font-size: 1rem; margin-bottom: 0.3rem; color: var(--violet); }
+p  { margin-bottom: 0.9rem; color: var(--text); }
+a  { color: var(--cyan); text-decoration: none; }
+a:hover { text-decoration: underline; }
+ul,ol { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+li { margin-bottom: 0.3rem; }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: rgba(76,201,240,0.08);
+  border: 1px solid rgba(76,201,240,0.18);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--cyan);
+}
+strong { color: var(--text); font-weight: 600; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+/* ═══════════════════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════════ */
+#sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  width: var(--sidebar-w);
+  height: 100vh;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 2rem;
+}
+.sidebar-logo {
+  padding: 1.5rem 1.4rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.sidebar-logo-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.sidebar-logo-text { font-weight: 700; font-size: 0.9rem; line-height: 1.25; color: var(--text); }
+.sidebar-logo-sub { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+
+.sidebar-section-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 1.2rem 1.4rem 0.4rem;
+}
+.sidebar-nav { list-style: none; padding: 0; margin: 0; }
+.sidebar-nav li a {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 1.4rem;
+  color: var(--muted);
+  font-size: 0.83rem;
+  font-weight: 500;
+  border-left: 2px solid transparent;
+  transition: all var(--transition);
+  text-decoration: none;
+}
+.sidebar-nav li a:hover { color: var(--text); background: rgba(76,201,240,0.05); }
+.sidebar-nav li a.active {
+  color: var(--cyan);
+  border-left-color: var(--cyan);
+  background: rgba(76,201,240,0.07);
+}
+.sidebar-nav li a .nav-icon { font-size: 0.9rem; width: 16px; text-align: center; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════════════════════════ */
+#main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-width: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HERO BANNER
+═══════════════════════════════════════════════════════════ */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 5rem 4rem 4rem;
+  background: linear-gradient(135deg, #07101f 0%, #0c1d3a 40%, #091829 70%, #07101f 100%);
+  border-bottom: 1px solid var(--border);
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(76,201,240,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -60px; left: 20%;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(129,140,248,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: rgba(76,201,240,0.1);
+  border: 1px solid rgba(76,201,240,0.25);
+  border-radius: 50px;
+  padding: 0.35rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cyan);
+  letter-spacing: 0.05em;
+  margin-bottom: 1.5rem;
+  position: relative; z-index: 1;
+}
+.hero h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 0%, var(--cyan) 50%, var(--violet) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+  position: relative; z-index: 1;
+}
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: var(--muted);
+  max-width: 600px;
+  margin-bottom: 2rem;
+  position: relative; z-index: 1;
+}
+.hero-pills {
+  display: flex; flex-wrap: wrap; gap: 0.6rem;
+  position: relative; z-index: 1;
+}
+.pill {
+  padding: 0.3rem 0.85rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+.pill-cyan  { background: rgba(76,201,240,0.1);  border-color: rgba(76,201,240,0.3);  color: var(--cyan); }
+.pill-violet{ background: rgba(129,140,248,0.1); border-color: rgba(129,140,248,0.3); color: var(--violet); }
+.pill-green { background: rgba(52,211,153,0.1);  border-color: rgba(52,211,153,0.3);  color: var(--green); }
+.pill-amber { background: rgba(251,191,36,0.1);  border-color: rgba(251,191,36,0.3);  color: var(--amber); }
+.pill-red   { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: var(--red); }
+
+/* ═══════════════════════════════════════════════════════════
+   SECTIONS
+═══════════════════════════════════════════════════════════ */
+.content-wrap { padding: 3rem 4rem; max-width: 1100px; }
+.section { margin-bottom: 4rem; scroll-margin-top: 2rem; }
+.section-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.section-icon {
+  width: 38px; height: 38px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.icon-cyan   { background: rgba(76,201,240,0.15);  color: var(--cyan); }
+.icon-violet { background: rgba(129,140,248,0.15); color: var(--violet); }
+.icon-green  { background: rgba(52,211,153,0.15);  color: var(--green); }
+.icon-amber  { background: rgba(251,191,36,0.15);  color: var(--amber); }
+.icon-red    { background: rgba(248,113,113,0.15); color: var(--red); }
+
+.section-title-text h2 { margin-bottom: 0; }
+.section-title-text span { font-size: 0.8rem; color: var(--muted); font-weight: 400; }
+
+/* ═══════════════════════════════════════════════════════════
+   CARDS GRID
+═══════════════════════════════════════════════════════════ */
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.4rem;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(76,201,240,0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+.card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+.card-icon { font-size: 1.5rem; margin-bottom: 0.7rem; }
+.card h4 { color: var(--text); font-size: 0.95rem; margin-bottom: 0.35rem; }
+.card p  { font-size: 0.82rem; color: var(--muted); margin: 0; }
+
+/* ═══════════════════════════════════════════════════════════
+   TABLES
+═══════════════════════════════════════════════════════════ */
+.table-wrap { overflow-x: auto; margin-bottom: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+thead { background: rgba(76,201,240,0.08); }
+thead th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cyan);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody tr { transition: background var(--transition); }
+tbody tr:hover { background: rgba(76,201,240,0.03); }
+tbody tr:not(:last-child) { border-bottom: 1px solid rgba(76,201,240,0.06); }
+tbody td { padding: 0.7rem 1rem; vertical-align: top; color: var(--text); }
+/* key-val tables (env, endpoints) get mono cyan first col */
+.key-val-table tbody td:first-child { font-family: var(--font-mono); font-size: 0.82rem; color: var(--cyan); }
+
+/* ═══════════════════════════════════════════════════════════
+   CODE BLOCKS
+═══════════════════════════════════════════════════════════ */
+.code-block {
+  background: #050d1a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem;
+  position: relative;
+}
+.code-block-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.55rem 1rem;
+  background: rgba(76,201,240,0.05);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  gap: 0.5rem;
+}
+.code-block-header .lang-badge {
+  background: rgba(76,201,240,0.1);
+  border: 1px solid rgba(76,201,240,0.2);
+  border-radius: 4px;
+  padding: 1px 7px;
+  color: var(--cyan);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+.code-block pre {
+  padding: 1.2rem 1.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: #c9d1e0;
+  tab-size: 2;
+  margin: 0;
+  white-space: pre;
+}
+/* Syntax colouring */
+.cm { color: #4a5d7a; font-style: italic; }   /* comments */
+.ky { color: var(--cyan); }                     /* keys */
+.vl { color: var(--green); }                   /* values */
+.st { color: var(--amber); }                   /* strings */
+.nm { color: #ff9de2; }                        /* numbers */
+.kw { color: var(--violet); }                  /* keywords */
+.op { color: var(--muted); }                   /* operators */
+.fn { color: #ffd580; }                        /* functions */
+.ty { color: var(--amber); }                   /* types */
+
+/* ═══════════════════════════════════════════════════════════
+   FILE TREE
+═══════════════════════════════════════════════════════════ */
+.file-tree {
+  background: #050d1a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.9;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  white-space: pre;   /* preserve indentation */
+  tab-size: 2;
+}
+.ft-dir  { color: var(--cyan); font-weight: 600; }
+.ft-env  { color: var(--amber); }
+.ft-file { color: var(--muted); }
+.ft-cm   { color: #3d5068; font-style: italic; }
+.ft-indent { display: inline-block; width: 1.2em; }
+
+/* ═══════════════════════════════════════════════════════════
+   API ENDPOINT CARDS
+═══════════════════════════════════════════════════════════ */
+.endpoint-list { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
+.endpoint-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: all var(--transition);
+}
+.endpoint-card:hover { border-color: var(--border2); }
+.endpoint-header {
+  display: flex; align-items: center; gap: 0.9rem;
+  padding: 0.85rem 1.2rem;
+  cursor: pointer;
+  user-select: none;
+}
+.method-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 5px;
+  min-width: 60px;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+.method-get    { background: rgba(52,211,153,0.15);  color: var(--green);  border: 1px solid rgba(52,211,153,0.3); }
+.method-post   { background: rgba(76,201,240,0.15);  color: var(--cyan);   border: 1px solid rgba(76,201,240,0.3); }
+.method-delete { background: rgba(248,113,113,0.15); color: var(--red);    border: 1px solid rgba(248,113,113,0.3); }
+.endpoint-path { font-family: var(--font-mono); font-size: 0.88rem; color: var(--text); }
+.endpoint-desc { font-size: 0.8rem; color: var(--muted); margin-left: auto; }
+.endpoint-body {
+  padding: 0 1.2rem 1rem;
+  font-size: 0.83rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+.endpoint-body p { margin: 0.5rem 0 0; }
+
+/* ═══════════════════════════════════════════════════════════
+   CALLOUT / ALERT BOXES
+═══════════════════════════════════════════════════════════ */
+.callout {
+  display: flex; gap: 0.9rem;
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  margin: 1.2rem 0 1.5rem;
+  border-left: 3px solid;
+}
+.callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body h5 { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.3rem; }
+.callout-body p  { font-size: 0.84rem; margin: 0; }
+.callout-note  { background: rgba(76,201,240,0.07);  border-color: var(--cyan);   }
+.callout-note  .callout-icon, .callout-note  h5 { color: var(--cyan); }
+.callout-tip   { background: rgba(52,211,153,0.07);  border-color: var(--green);  }
+.callout-tip   .callout-icon, .callout-tip   h5 { color: var(--green); }
+.callout-warn  { background: rgba(251,191,36,0.07);  border-color: var(--amber);  }
+.callout-warn  .callout-icon, .callout-warn  h5 { color: var(--amber); }
+
+/* ═══════════════════════════════════════════════════════════
+   ARCHITECTURE DIAGRAM
+═══════════════════════════════════════════════════════════ */
+.arch-diagram {
+  background: #050d1a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+}
+/* Main 3-column grid: Browser → Vite → Express */
+.arch-tier {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: nowrap;
+  margin-bottom: 0;
+}
+.arch-tier + .arch-tier { margin-top: 2rem; }
+/* Second tier: two groups side by side below Express */
+.arch-tier-split {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+.arch-split-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+}
+.arch-split-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+.arch-box {
+  padding: 0.8rem 1.2rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  min-width: 120px;
+  border: 1.5px solid;
+  flex-shrink: 0;
+}
+.arch-box small { display: block; font-size: 0.65rem; font-weight: 400; opacity: 0.75; margin-top: 3px; }
+.arch-cyan    { background: rgba(76,201,240,0.12);  border-color: rgba(76,201,240,0.4);  color: var(--cyan); }
+.arch-pink    { background: rgba(255,93,115,0.12);  border-color: rgba(255,93,115,0.4);  color: #ff7b8a; }
+.arch-green   { background: rgba(52,211,153,0.12);  border-color: rgba(52,211,153,0.4);  color: var(--green); }
+.arch-amber   { background: rgba(251,191,36,0.12);  border-color: rgba(251,191,36,0.4);  color: var(--amber); }
+.arch-violet  { background: rgba(129,140,248,0.12); border-color: rgba(129,140,248,0.4); color: var(--violet); }
+.arch-red     { background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.4); color: var(--red); }
+.arch-arrow {
+  font-size: 1.2rem;
+  color: var(--dim);
+  margin: 0 0.35rem;
+  flex-shrink: 0;
+  letter-spacing: -2px;
+}
+.arch-arrow-lbl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin: 0 0.2rem;
+}
+.arch-arrow-lbl .arr { font-size: 1.1rem; color: var(--dim); }
+.arch-arrow-lbl .lbl { font-size: 0.62rem; color: var(--muted); white-space: nowrap; }
+.arch-sep-line {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 2rem 0 0;
+  position: relative;
+}
+.arch-label { font-size: 0.68rem; color: var(--muted); text-align: center; margin-top: 0.6rem; font-style: italic; }
+.arch-or { font-size: 0.78rem; color: var(--dim); font-weight: 600; align-self: center; padding: 0 0.3rem; }
+
+/* ═══════════════════════════════════════════════════════════
+   COLOUR SWATCHES
+═══════════════════════════════════════════════════════════ */
+.swatch {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-right: 6px;
+  border: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DATA FLOW ASCII
+═══════════════════════════════════════════════════════════ */
+.ascii-flow {
+  background: #050d1a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.85;
+  overflow-x: auto;
+  color: #c9d1e0;
+  margin-bottom: 1.5rem;
+}
+.af-cyan    { color: var(--cyan); }
+.af-green   { color: var(--green); }
+.af-amber   { color: var(--amber); }
+.af-violet  { color: var(--violet); }
+.af-red     { color: var(--red); }
+.af-muted   { color: var(--muted); }
+.af-dim     { color: var(--dim); }
+
+/* ═══════════════════════════════════════════════════════════
+   COMPONENT TABLE BADGES
+═══════════════════════════════════════════════════════════ */
+.comp-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  border: 1px solid;
+}
+.cb-ui    { background: rgba(76,201,240,0.1);  border-color: rgba(76,201,240,0.25);  color: var(--cyan); }
+.cb-chart { background: rgba(251,191,36,0.1);  border-color: rgba(251,191,36,0.25);  color: var(--amber); }
+.cb-lib   { background: rgba(129,140,248,0.1); border-color: rgba(129,140,248,0.25); color: var(--violet); }
+.cb-ai    { background: rgba(52,211,153,0.1);  border-color: rgba(52,211,153,0.25);  color: var(--green); }
+.cb-core  { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.25); color: var(--red); }
+
+/* ═══════════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════════ */
+.footer {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 2.5rem 4rem;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.footer-left { font-size: 0.83rem; color: var(--muted); }
+.footer-left strong { color: var(--cyan); }
+.footer-right { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════════ */
+@media(max-width: 900px) {
+  #sidebar { transform: translateX(-100%); }
+  #main { margin-left: 0; }
+  .content-wrap { padding: 2rem 1.5rem; }
+  .hero { padding: 3rem 1.5rem; }
+  .hero h1 { font-size: 1.9rem; }
+  .footer { padding: 2rem 1.5rem; }
+  .arch-row { flex-wrap: wrap; justify-content: center; }
+}
+@media(min-width: 901px) {
+  #mobile-menu-btn { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MISC UTILITIES
+═══════════════════════════════════════════════════════════ */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.panel-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.4rem;
+  margin-bottom: 1rem;
+}
+.tag-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.6rem 0; }
+.step-list { counter-reset: steps; list-style: none; padding: 0; }
+.step-list li {
+  counter-increment: steps;
+  display: flex; gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.2rem;
+}
+.step-list li::before {
+  content: counter(steps);
+  min-width: 28px; height: 28px;
+  background: rgba(76,201,240,0.12);
+  border: 1px solid rgba(76,201,240,0.3);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cyan);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.env-table tbody td:nth-child(3) { color: var(--green); font-family: var(--font-mono); font-size: 0.82rem; }
+.env-table tbody td:nth-child(1) { color: var(--amber); }
+
+.inline-flex { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+/* Schema pill */
+.schema-group { margin-bottom: 1.5rem; }
+.schema-group h4 { margin-bottom: 0.6rem; }
+.schema-fields {
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+}
+.sf { 
+  font-family: var(--font-mono); font-size: 0.78rem;
+  background: rgba(76,201,240,0.07); border: 1px solid rgba(76,201,240,0.2);
+  border-radius: 5px; padding: 2px 9px; color: var(--cyan);
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<nav id="sidebar" aria-label="Documentation navigation">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🛡️</div>
+    <div class="sidebar-logo-text">
+      SOC Platform
+      <div class="sidebar-logo-sub">Documentation v1.0</div>
+    </div>
+  </div>
+
+  <p class="sidebar-section-label">Overview</p>
+  <ul class="sidebar-nav">
+    <li><a href="#intro"        class="nav-link"><span class="nav-icon">🏠</span> Introduction</a></li>
+    <li><a href="#features"     class="nav-link"><span class="nav-icon">✨</span> Features</a></li>
+    <li><a href="#tech-stack"   class="nav-link"><span class="nav-icon">📦</span> Tech Stack</a></li>
+    <li><a href="#architecture" class="nav-link"><span class="nav-icon">🏗️</span> Architecture</a></li>
+    <li><a href="#file-tree"    class="nav-link"><span class="nav-icon">📁</span> File Structure</a></li>
+  </ul>
+
+  <p class="sidebar-section-label">Setup &amp; Config</p>
+  <ul class="sidebar-nav">
+    <li><a href="#getting-started" class="nav-link"><span class="nav-icon">🚀</span> Getting Started</a></li>
+    <li><a href="#env-reference"   class="nav-link"><span class="nav-icon">⚙️</span> .env Reference</a></li>
+    <li><a href="#ai-providers"    class="nav-link"><span class="nav-icon">🤖</span> AI Providers</a></li>
+    <li><a href="#data-sources"    class="nav-link"><span class="nav-icon">🗄️</span> Data Sources</a></li>
+    <li><a href="#schema"          class="nav-link"><span class="nav-icon">📐</span> Schema</a></li>
+  </ul>
+
+  <p class="sidebar-section-label">Backend</p>
+  <ul class="sidebar-nav">
+    <li><a href="#api-endpoints"   class="nav-link"><span class="nav-icon">🔌</span> API Endpoints</a></li>
+    <li><a href="#normalization"   class="nav-link"><span class="nav-icon">🔄</span> Normalization</a></li>
+    <li><a href="#ai-engine"       class="nav-link"><span class="nav-icon">🧠</span> AI Engine</a></li>
+  </ul>
+
+  <p class="sidebar-section-label">Frontend</p>
+  <ul class="sidebar-nav">
+    <li><a href="#frontend-arch"   class="nav-link"><span class="nav-icon">⚛️</span> Architecture</a></li>
+    <li><a href="#components"      class="nav-link"><span class="nav-icon">🧩</span> Components</a></li>
+    <li><a href="#design-system"   class="nav-link"><span class="nav-icon">🎨</span> Design System</a></li>
+    <li><a href="#markdown"        class="nav-link"><span class="nav-icon">📝</span> Markdown</a></li>
+    <li><a href="#tabs-guide"      class="nav-link"><span class="nav-icon">📊</span> Tabs Guide</a></li>
+  </ul>
+
+  <p class="sidebar-section-label">Reference</p>
+  <ul class="sidebar-nav">
+    <li><a href="#data-flow"       class="nav-link"><span class="nav-icon">🌊</span> Data Flow</a></li>
+    <li><a href="#troubleshooting" class="nav-link"><span class="nav-icon">🔧</span> Troubleshooting</a></li>
+  </ul>
+</nav>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<main id="main">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-badge">🛡️ &nbsp; SOC Visualization Platform</div>
+    <h1>Developer Documentation</h1>
+    <p class="hero-subtitle">Full-stack security operations centre dashboard — React 19 frontend, Express.js backend, AI-powered incident analysis via Gemini or Ollama.</p>
+    <div class="hero-pills">
+      <span class="pill pill-cyan">React 19</span>
+      <span class="pill pill-cyan">TypeScript 5</span>
+      <span class="pill pill-cyan">Vite 7</span>
+      <span class="pill pill-violet">Ollama</span>
+      <span class="pill pill-amber">Gemini API</span>
+      <span class="pill pill-green">Express.js</span>
+      <span class="pill pill-red">ECharts 5</span>
+    </div>
+  </header>
+
+  <div class="content-wrap">
+
+    <!-- ══════════════════════════════════════════════
+         1. INTRODUCTION
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="intro">
+      <div class="section-header">
+        <div class="section-icon icon-cyan">🏠</div>
+        <div class="section-title-text">
+          <h2>Introduction &amp; Overview</h2>
+          <span>What is the SOC Visualization Platform?</span>
+        </div>
+      </div>
+
+      <p>The <strong>SOC Visualization Platform</strong> is a full-stack, AI-assisted security operations centre dashboard designed for enterprise environments. It ingests telemetry data from multiple network vendors, normalises it into a unified schema, and presents it through rich interactive visualisations — all enriched by on-demand AI incident analysis.</p>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon">📡</div>
+          <h4>Multi-Vendor Ingestion</h4>
+          <p>Parses CSVs from QRadar, Cisco SNA, Arista, Cisco ISE, Cisco DNAC, and Cisco APIC.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🧠</div>
+          <h4>AI-Powered Analysis</h4>
+          <p>Ask the AI anything about your telemetry, or trigger automated incident analysis per IP entity.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📊</div>
+          <h4>Rich Visualisations</h4>
+          <p>Communication graphs, Sankey charts, timeline sparklines, and IP activity charts via ECharts &amp; Cytoscape.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔁</div>
+          <h4>Hot Reload Config</h4>
+          <p>AI provider and model config reloads from .env on every request — no server restart needed.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📤</div>
+          <h4>Upload &amp; Export</h4>
+          <p>Drag-and-drop CSV upload per vendor, normalise in memory, and export as a ZIP of CSVs.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🏢</div>
+          <h4>Workspaces</h4>
+          <p>3 npm workspaces — <code>frontend</code>, <code>backend</code>, and <code>shared</code> — share TypeScript types via <code>@soc/telemetry-shared</code>.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-note">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-body">
+          <h5>Port Layout</h5>
+          <p>The Vite dev server runs on <strong>port 5000</strong> and proxies all <code>/api/*</code> requests to <strong>http://127.0.0.1:3001</strong> where the Express backend listens. In production, Express serves the built frontend bundle directly.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         2. FEATURES
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="features">
+      <div class="section-header">
+        <div class="section-icon icon-violet">✨</div>
+        <div class="section-title-text">
+          <h2>Features</h2>
+          <span>What the platform provides</span>
+        </div>
+      </div>
+
+      <h3>Main Navigation Tabs</h3>
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon">📈</div>
+          <h4>Dashboard</h4>
+          <p>At-a-glance KPI cards (total assets, high alerts, top talker), charts for protocol distribution, severity breakdown, and top flows.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🕸️</div>
+          <h4>Communication Graph</h4>
+          <p>Force-directed node/edge graph (Cytoscape.js) showing IP-to-IP communication. Filter by severity and click to inspect an entity.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔍</div>
+          <h4>IP Activity</h4>
+          <p>Per-IP deep-dive: inbound/outbound flow timeline, port heatmap, alert frequency, and a raw event feed.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📋</div>
+          <h4>Raw Logs</h4>
+          <p>Paginated, searchable raw telemetry rows per vendor. Displays the original, un-normalised CSV columns.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💬</div>
+          <h4>Ask AI</h4>
+          <p>Free-form chat interface. The full normalised telemetry snapshot is injected as context. Supports Gemini and Ollama backends.</p>
+        </div>
+      </div>
+
+      <h3>Entity Workspace</h3>
+      <p>When an IP is selected from the graph or activity list, the Entity Workspace opens with 6 dedicated sub-tabs:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Sub-Tab</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><strong>Overview</strong></td><td>Asset metadata (hostname, MAC, ASN, country, device type, risk score)</td></tr>
+            <tr><td>2</td><td><strong>Flows</strong></td><td>Filtered flow table: source/dest IPs, ports, protocol, bytes, packets</td></tr>
+            <tr><td>3</td><td><strong>Events</strong></td><td>Security events attributed to this IP with severity badges</td></tr>
+            <tr><td>4</td><td><strong>Alerts</strong></td><td>Alert records with category, name, and description enrichment</td></tr>
+            <tr><td>5</td><td><strong>Timeline</strong></td><td>Snake-style event timeline + Sankey flow chart</td></tr>
+            <tr><td>6</td><td><strong>AI Analysis</strong></td><td>One-click Incident Analysis report (IncidentAnalysisPanel → RAT Report)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Upload &amp; Export</h3>
+      <div class="two-col">
+        <div class="panel-box">
+          <h4>📤 Upload</h4>
+          <p>The <strong>UploadModal</strong> lets you drag-and-drop CSV files keyed by vendor name. Files are base64-encoded and POSTed to <code>/api/upload</code>. Status polling via <code>/api/upload/status</code>. Normalisation runs server-side immediately.</p>
+        </div>
+        <div class="panel-box">
+          <h4>📥 Export</h4>
+          <p>Click <em>Export CSV</em> to stream a ZIP download from <code>/api/export/csv</code>. The archive contains one CSV per normalised entity type (assets, flows, events, alerts).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         3. TECH STACK
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="tech-stack">
+      <div class="section-header">
+        <div class="section-icon icon-amber">📦</div>
+        <div class="section-title-text">
+          <h2>Technology Stack</h2>
+          <span>All libraries, runtimes, and APIs</span>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Layer</th><th>Technology</th><th>Version</th><th>Role</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="pill pill-cyan" style="font-size:0.68rem">Frontend</span></td>
+              <td style="font-weight:600;color:var(--text)">React</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">^19.1.0</td>
+              <td>UI framework — concurrent rendering, no extra state management library</td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-cyan" style="font-size:0.68rem">Frontend</span></td>
+              <td style="font-weight:600;color:var(--text)">TypeScript</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">^5.8.3</td>
+              <td>End-to-end type safety across all three workspaces</td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-cyan" style="font-size:0.68rem">Frontend</span></td>
+              <td style="font-weight:600;color:var(--text)">Vite</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">^7.0.4</td>
+              <td>Dev server (port 5000), HMR, <code>/api</code> proxy, and production bundler</td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-cyan" style="font-size:0.68rem">Frontend</span></td>
+              <td style="font-weight:600;color:var(--text)">ECharts</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">^5.6.0</td>
+              <td>Timeline, Sankey, bar/line charts across all dashboard tabs</td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-cyan" style="font-size:0.68rem">Frontend</span></td>
+              <td style="font-weight:600;color:var(--text)">Cytoscape.js</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">^3.30.2</td>
+              <td>Force-directed network communication graph</td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-green" style="font-size:0.68rem">Backend</span></td>
+              <td style="font-weight:600;color:var(--text)">Express.js</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">^4</td>
+              <td>REST API server on port 3001, serves static build in production</td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-green" style="font-size:0.68rem">Backend</span></td>
+              <td style="font-weight:600;color:var(--text)">tsx</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">latest</td>
+              <td>Hot-reload TypeScript execution in dev mode</td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-amber" style="font-size:0.68rem">AI</span></td>
+              <td style="font-weight:600;color:var(--text)">Google Gemini API</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">v1beta REST</td>
+              <td>Cloud AI — incident analysis + Ask AI chat. Model fallback chain built-in.</td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-violet" style="font-size:0.68rem">AI</span></td>
+              <td style="font-weight:600;color:var(--text)">Ollama</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">REST :11434</td>
+              <td>Local LLM alternative — default model: <code>qwen3:4b</code></td>
+            </tr>
+            <tr>
+              <td><span class="pill" style="font-size:0.68rem;background:rgba(255,93,115,0.1);border-color:rgba(255,93,115,0.3);color:#ff7b8a">Shared</span></td>
+              <td style="font-weight:600;color:var(--text)">@soc/telemetry-shared</td><td style="color:var(--muted);font-family:var(--font-mono);font-size:0.8rem">workspace</td>
+              <td>Shared TypeScript types: <code>Asset</code>, <code>Flow</code>, <code>Event</code>, <code>Alert</code>, <code>IncidentAnalysisContextPackage</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         4. ARCHITECTURE
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="architecture">
+      <div class="section-header">
+        <div class="section-icon icon-green">🏗️</div>
+        <div class="section-title-text">
+          <h2>System Architecture</h2>
+          <span>Request flow from browser to data sources</span>
+        </div>
+      </div>
+
+      <div class="arch-diagram">
+
+        <!-- Tier 1: Browser → Vite → Express -->
+        <div class="arch-tier">
+          <div class="arch-box arch-cyan">🌐 Browser<small>React SPA</small></div>
+          <div class="arch-arrow-lbl">
+            <span class="arr">&#x27A4;</span>
+            <span class="lbl">HTTP / WS</span>
+            <span class="lbl">port 5000</span>
+          </div>
+          <div class="arch-box arch-pink">⚡ Vite<small>:5000 · HMR · Proxy</small></div>
+          <div class="arch-arrow-lbl">
+            <span class="arr">&#x27A4;</span>
+            <span class="lbl">/api/* →</span>
+            <span class="lbl">:3001</span>
+          </div>
+          <div class="arch-box arch-green">🖥 Express.js<small>REST API · port 3001</small></div>
+        </div>
+
+        <!-- Divider -->
+        <div style="display:flex;justify-content:center;margin:1.5rem 0 0.5rem">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="width:2px;height:28px;background:linear-gradient(to bottom,var(--green),var(--dim))"></div>
+            <span style="font-size:0.65rem;color:var(--dim)">routes to</span>
+          </div>
+        </div>
+
+        <!-- Tier 2: Express → AI providers + Data -->
+        <div class="arch-tier-split">
+
+          <!-- AI group -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.6rem">
+            <div style="font-size:0.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.2rem">AI Provider (choose one)</div>
+            <div class="arch-split-group">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem">
+                <div class="arch-box arch-amber">☁️ Google Gemini<small>v1beta · cloud</small></div>
+                <div style="font-size:0.64rem;color:var(--muted);font-style:italic">ANALYSIS_PROVIDER=gemini</div>
+              </div>
+              <span class="arch-or">or</span>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem">
+                <div class="arch-box arch-violet">🦙 Ollama<small>localhost:11434</small></div>
+                <div style="font-size:0.64rem;color:var(--muted);font-style:italic">ANALYSIS_PROVIDER=ollama</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data pipeline group -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0.6rem">
+            <div style="font-size:0.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.2rem">Data Pipeline</div>
+            <div class="arch-split-group">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem">
+                <div class="arch-box arch-red">📂 CSV Files<small>data/ &amp; uploads/</small></div>
+              </div>
+              <div class="arch-arrow-lbl">
+                <span class="arr">&#x27A4;</span>
+                <span class="lbl">normalize</span>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem">
+                <div class="arch-box arch-green">normalize.ts<small>→ Assets/Flows/Events/Alerts</small></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <p class="arch-label" style="margin-top:1.5rem">Dev: Vite proxies <code style="color:var(--cyan);background:transparent;border:none;font-size:0.75rem">/api/*</code> → Express · Prod: Express serves the Vite bundle directly</p>
+      </div>
+
+      <h3>Workspace Dependency Graph</h3>
+      <div class="code-block">
+        <div class="code-block-header"><span>npm workspaces</span><span class="lang-badge">text</span></div>
+        <pre>
+  Root package.json
+  ├── <span class="ky">frontend</span>   (depends on @soc/telemetry-shared)
+  ├── <span class="ky">backend</span>    (depends on @soc/telemetry-shared)
+  └── <span class="ky">shared</span>     (@soc/telemetry-shared — no external deps)</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         5. FILE TREE
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="file-tree">
+      <div class="section-header">
+        <div class="section-icon icon-cyan">📁</div>
+        <div class="section-title-text">
+          <h2>Annotated File Structure</h2>
+          <span>Every important file and its purpose</span>
+        </div>
+      </div>
+
+      <div class="file-tree">
+<span class="ft-dir">SOC-Visualization-Platform/</span>
+├── <span class="ft-env">.env</span>                               <span class="ft-cm"># AI provider keys and model config (never commit!)</span>
+├── <span class="ft-file">package.json</span>                       <span class="ft-cm"># Root workspace manifest: scripts dev/build/start</span>
+├── <span class="ft-file">tsconfig.base.json</span>                 <span class="ft-cm"># Shared TS compiler options inherited by all workspaces</span>
+├── <span class="ft-file">DOCUMENTATION.html</span>                 <span class="ft-cm"># ← You are here</span>
+│
+├── <span class="ft-dir">shared/</span>
+│   └── <span class="ft-dir">src/</span>
+│       └── <span class="ft-file">index.ts</span>                   <span class="ft-cm"># Exports: Asset, Flow, Event, Alert, NormalizedData, IncidentAnalysisContextPackage</span>
+│
+├── <span class="ft-dir">backend/</span>
+│   └── <span class="ft-dir">src/</span>
+│       ├── <span class="ft-file">index.ts</span>               <span class="ft-cm"># Express entry: mounts all routes, serves static in prod</span>
+│       ├── <span class="ft-file">analysisConfig.ts</span>      <span class="ft-cm"># Reads .env vars; exports reloadEnvIfNeeded() for hot reload</span>
+│       ├── <span class="ft-file">geminiClient.ts</span>        <span class="ft-cm"># Gemini API wrapper with model fallback chain</span>
+│       ├── <span class="ft-file">ollamaClient.ts</span>        <span class="ft-cm"># Ollama REST wrapper (fetch + timeout)</span>
+│       ├── <span class="ft-file">incidentAnalysis.ts</span>    <span class="ft-cm"># Assembles IncidentAnalysisContextPackage and calls AI</span>
+│       ├── <span class="ft-file">incidentPrompt.ts</span>      <span class="ft-cm"># System + user prompts for structured JSON incident reports</span>
+│       ├── <span class="ft-file">normalize.ts</span>           <span class="ft-cm"># Master normalisation engine: vendor parsers, asset merge, risk score</span>
+│       ├── <span class="ft-file">loadCsv.ts</span>             <span class="ft-cm"># CSV → raw row array (handles BOM, encoding)</span>
+│       ├── <span class="ft-file">exportNormalized.ts</span>    <span class="ft-cm"># Converts NormalizedData to CSV strings per entity type</span>
+│       └── <span class="ft-file">zipBuilder.ts</span>          <span class="ft-cm"># Streams archiver ZIP of CSV buffers to HTTP response</span>
+│
+├── <span class="ft-dir">frontend/</span>
+│   ├── <span class="ft-file">vite.config.ts</span>             <span class="ft-cm"># Vite config: port 5000, proxy /api → :3001</span>
+│   └── <span class="ft-dir">src/</span>
+│       ├── <span class="ft-file">App.tsx</span>                <span class="ft-cm"># Root component: data fetch, global state, tab routing</span>
+│       ├── <span class="ft-file">styles.css</span>             <span class="ft-cm"># Global CSS: design tokens, base reset, dark theme</span>
+│       ├── <span class="ft-dir">lib/</span>
+│       │   └── <span class="ft-file">markdown.tsx</span>       <span class="ft-cm"># Custom Markdown → JSX renderer (no external dep)</span>
+│       └── <span class="ft-dir">components/</span>            <span class="ft-cm"># All 16 visual components (see Components section)</span>
+│           ├── <span class="ft-file">FilterBar.tsx</span>
+│           ├── <span class="ft-file">DashboardTab.tsx</span>
+│           ├── <span class="ft-file">GraphTab.tsx</span>
+│           ├── <span class="ft-file">CommunicationGraph.tsx</span>
+│           ├── <span class="ft-file">IpActivityTab.tsx</span>
+│           ├── <span class="ft-file">RawLogsTab.tsx</span>
+│           ├── <span class="ft-file">AskAITab.tsx</span>
+│           ├── <span class="ft-file">EntityWorkspace.tsx</span>
+│           ├── <span class="ft-file">IncidentAnalysisPanel.tsx</span>
+│           ├── <span class="ft-file">DetailsPanel.tsx</span>
+│           ├── <span class="ft-file">SequencePanel.tsx</span>
+│           ├── <span class="ft-file">SnakeTimeline.tsx</span>
+│           ├── <span class="ft-file">TimelineChart.tsx</span>
+│           ├── <span class="ft-file">SankeyChart.tsx</span>
+│           ├── <span class="ft-file">UploadModal.tsx</span>
+│           └── <span class="ft-file">RATReport.tsx</span>
+│
+└── <span class="ft-dir">data/</span>
+    ├── <span class="ft-file">qradar.csv</span>                 <span class="ft-cm"># IBM QRadar SIEM export</span>
+    ├── <span class="ft-file">sna.csv</span>                    <span class="ft-cm"># Cisco Secure Network Analytics</span>
+    ├── <span class="ft-file">arista.csv</span>                 <span class="ft-cm"># Arista CloudVision / EOS telemetry</span>
+    ├── <span class="ft-file">cisco_ise.csv</span>              <span class="ft-cm"># Cisco Identity Services Engine</span>
+    ├── <span class="ft-file">cisco_dnac.csv</span>             <span class="ft-cm"># Cisco DNA Center (Catalyst Centre)</span>
+    ├── <span class="ft-file">cisco_apic.csv</span>             <span class="ft-cm"># Cisco ACI / APIC controller</span>
+    ├── <span class="ft-dir">uploads/</span>                   <span class="ft-cm"># Runtime-uploaded CSVs (gitignored)</span>
+    └── <span class="ft-dir">normalized/</span>                <span class="ft-cm"># Output from exportNormalized.ts (optional cache)</span>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         6. GETTING STARTED
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="getting-started">
+      <div class="section-header">
+        <div class="section-icon icon-green">🚀</div>
+        <div class="section-title-text">
+          <h2>Getting Started</h2>
+          <span>Install, configure, and run the platform</span>
+        </div>
+      </div>
+
+      <ol class="step-list">
+        <li>
+          <div>
+            <strong>Clone &amp; install all dependencies</strong>
+            <div class="code-block" style="margin-top:0.6rem;">
+              <div class="code-block-header"><span>terminal</span><span class="lang-badge">bash</span></div>
+              <pre><span class="cm"># From the repository root</span>
+<span class="ky">npm install</span></pre>
+            </div>
+            <p style="margin:0;font-size:0.83rem;color:var(--muted);">npm workspaces installs all three workspaces in a single pass.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Create your <code>.env</code> file</strong>
+            <div class="code-block" style="margin-top:0.6rem;">
+              <div class="code-block-header"><span>.env</span><span class="lang-badge">dotenv</span></div>
+              <pre><span class="cm"># Choose your AI provider</span>
+<span class="ky">ANALYSIS_PROVIDER</span>=<span class="vl">ollama</span>            <span class="cm"># or gemini</span>
+
+<span class="cm"># Gemini (only needed when ANALYSIS_PROVIDER=gemini)</span>
+<span class="ky">GEMINI_API_KEY</span>=<span class="st">your-api-key-here</span>
+
+<span class="cm"># Ollama (defaults work if Ollama is running locally)</span>
+<span class="ky">OLLAMA_BASE_URL</span>=<span class="vl">http://127.0.0.1:11434</span>
+<span class="ky">OLLAMA_MODEL</span>=<span class="vl">qwen3:4b</span></pre>
+            </div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Start the development server</strong>
+            <div class="code-block" style="margin-top:0.6rem;">
+              <div class="code-block-header"><span>terminal</span><span class="lang-badge">bash</span></div>
+              <pre><span class="ky">npm run dev</span></pre>
+            </div>
+            <p style="margin:0;font-size:0.83rem;color:var(--muted);">This starts the Express backend on <code>:3001</code> and the Vite frontend on <code>:5000</code> concurrently. Open <strong>http://localhost:5000</strong> in your browser.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Production build</strong>
+            <div class="code-block" style="margin-top:0.6rem;">
+              <div class="code-block-header"><span>terminal</span><span class="lang-badge">bash</span></div>
+              <pre><span class="ky">npm run build</span>  <span class="cm"># Compiles TS + bundles Vite</span>
+<span class="ky">npm start</span>      <span class="cm"># Express serves dist/ on :3001</span></pre>
+            </div>
+          </div>
+        </li>
+      </ol>
+
+      <div class="callout callout-tip">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <h5>Ollama Quick Start</h5>
+          <p>If Ollama is not yet installed, visit <a href="https://ollama.com" target="_blank">ollama.com</a> and run <code>ollama pull qwen3:4b</code> to download the default model before starting the platform.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         7. .ENV REFERENCE
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="env-reference">
+      <div class="section-header">
+        <div class="section-icon icon-amber">⚙️</div>
+        <div class="section-title-text">
+          <h2>.env Reference</h2>
+          <span>All environment variables and their defaults</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="env-table">
+          <thead><tr><th>Variable</th><th>Description</th><th>Default</th><th>Required</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>ANALYSIS_PROVIDER</td>
+              <td>AI backend to use for incident analysis and Ask AI. Accepts <code>gemini</code> or <code>ollama</code>.</td>
+              <td>ollama</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>GEMINI_API_KEY</td>
+              <td>Your Google AI Studio API key. Only required when <code>ANALYSIS_PROVIDER=gemini</code>.</td>
+              <td>—</td>
+              <td><span class="pill pill-red" style="font-size:0.68rem;">Conditional</span></td>
+            </tr>
+            <tr>
+              <td>GEMINI_MODEL</td>
+              <td>Fallback Gemini model if all primary candidates fail. See the fallback chain below.</td>
+              <td>gemini-flash-lite-latest</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>GEMINI_TIMEOUT_MS</td>
+              <td>HTTP timeout in milliseconds for Gemini API calls.</td>
+              <td>30000</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>GEMINI_TEMPERATURE</td>
+              <td>Sampling temperature for Gemini (0 = deterministic, 1 = creative).</td>
+              <td>0.2</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>GEMINI_MAX_TOKENS</td>
+              <td>Maximum output tokens for Gemini responses.</td>
+              <td>1200</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>OLLAMA_BASE_URL</td>
+              <td>Base URL of the local Ollama REST API.</td>
+              <td>http://127.0.0.1:11434</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>OLLAMA_MODEL</td>
+              <td>Ollama model tag to use (must be pulled with <code>ollama pull</code> first).</td>
+              <td>qwen3:4b</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>OLLAMA_TIMEOUT_MS</td>
+              <td>HTTP timeout for Ollama. Local models can be slow on first token — keep this high.</td>
+              <td>120000</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>OLLAMA_TEMPERATURE</td>
+              <td>Sampling temperature for Ollama generation.</td>
+              <td>0.2</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>OLLAMA_MAX_TOKENS</td>
+              <td>Maximum tokens for Ollama responses (lower than Gemini due to local hardware limits).</td>
+              <td>800</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+            <tr>
+              <td>PORT</td>
+              <td>Port the Express backend listens on.</td>
+              <td>3001</td>
+              <td><span class="pill pill-green" style="font-size:0.68rem;">No</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-note">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-body">
+          <h5>Hot .env Reload</h5>
+          <p><code>analysisConfig.ts</code> exports a <code>reloadEnvIfNeeded()</code> function that is called at the start of every analysis/query request. It re-reads <code>.env</code> from disk on each invocation, so you can change the AI provider, model, temperature, or any other variable at runtime without restarting the backend server.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         8. AI PROVIDERS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="ai-providers">
+      <div class="section-header">
+        <div class="section-icon icon-violet">🤖</div>
+        <div class="section-title-text">
+          <h2>AI Provider Configuration</h2>
+          <span>Gemini (cloud) and Ollama (local) setup guides</span>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="panel-box">
+          <h3 style="color:var(--amber);">☁️ Google Gemini</h3>
+          <ol class="step-list" style="margin-top:0.8rem;">
+            <li><div>Go to <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> → <em>Get API key</em></div></li>
+            <li><div>Set <code>ANALYSIS_PROVIDER=gemini</code> in <code>.env</code></div></li>
+            <li><div>Set <code>GEMINI_API_KEY=&lt;your-key&gt;</code></div></li>
+            <li><div>Optionally tune <code>GEMINI_MODEL</code>, <code>GEMINI_TEMPERATURE</code>, <code>GEMINI_MAX_TOKENS</code></div></li>
+          </ol>
+        </div>
+        <div class="panel-box">
+          <h3 style="color:var(--violet);">🦙 Ollama (Local)</h3>
+          <ol class="step-list" style="margin-top:0.8rem;">
+            <li><div>Install Ollama from <a href="https://ollama.com" target="_blank">ollama.com</a></div></li>
+            <li><div>Run <code>ollama pull qwen3:4b</code> (or your preferred model)</div></li>
+            <li><div>Ensure Ollama is running: <code>ollama serve</code></div></li>
+            <li><div>Set <code>ANALYSIS_PROVIDER=ollama</code> in <code>.env</code> (this is the default)</div></li>
+          </ol>
+        </div>
+      </div>
+
+      <h3>Gemini Model Fallback Chain</h3>
+      <p><code>geminiClient.ts</code> attempts models in sequence, falling back to the next on rate-limit or model-not-found errors:</p>
+      <div class="code-block">
+        <div class="code-block-header"><span>geminiClient.ts — fallback order</span><span class="lang-badge">TypeScript</span></div>
+        <pre>
+<span class="kw">const</span> <span class="ky">FALLBACK_CHAIN</span> = [
+  <span class="st">"gemini-flash-lite-latest"</span>,         <span class="cm">// ← first attempt</span>
+  <span class="st">"gemini-3.1-flash-lite"</span>,
+  <span class="st">"gemini-3.1-flash-lite-preview"</span>,
+  <span class="st">"gemini-flash-latest"</span>,
+  process.env.<span class="ky">GEMINI_MODEL</span>,            <span class="cm">// ← GEMINI_MODEL env var (last resort)</span>
+];</pre>
+      </div>
+      <p>If all models in the chain fail, the error is surfaced to the client with a descriptive message.</p>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-body">
+          <h5>Ollama Timeout</h5>
+          <p>The default <code>OLLAMA_TIMEOUT_MS=120000</code> (2 minutes) is intentionally generous. Local models — especially on CPU — can take 30–90 seconds for the first token of a long context request. If you experience consistent timeouts, try a smaller model (e.g., <code>qwen3:1.7b</code>) or increase the timeout further.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         9. DATA SOURCES
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="data-sources">
+      <div class="section-header">
+        <div class="section-icon icon-red">🗄️</div>
+        <div class="section-title-text">
+          <h2>Data Sources &amp; Vendors</h2>
+          <span>Supported CSV formats and vendor keys</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Vendor Key</th><th>Product</th><th>Primary Data Type</th><th>Key Fields</th></tr></thead>
+          <tbody>
+            <tr><td>qradar</td><td>IBM QRadar SIEM</td><td>Security events &amp; alerts</td><td>Source IP, Destination IP, Event Name, Severity, Category</td></tr>
+            <tr><td>sna</td><td>Cisco Secure Network Analytics (Stealthwatch)</td><td>NetFlow / traffic flows</td><td>Initiator IP, Responder IP, Bytes, Packets, Duration</td></tr>
+            <tr><td>arista</td><td>Arista CloudVision / EOS</td><td>Device topology &amp; flows</td><td>Source Host, Destination Host, Protocol, Port, Bytes</td></tr>
+            <tr><td>cisco_ise</td><td>Cisco Identity Services Engine</td><td>Auth events &amp; assets</td><td>Endpoint IP, MAC Address, Username, Device Type, Auth Status</td></tr>
+            <tr><td>cisco_dnac</td><td>Cisco DNA Center (Catalyst Centre)</td><td>Device inventory &amp; health</td><td>Device IP, Hostname, Device Role, Health Score</td></tr>
+            <tr><td>cisco_apic</td><td>Cisco ACI APIC Controller</td><td>Fabric telemetry</td><td>Endpoint IP, EPG, Tenant, VRF, Policy Hits</td></tr>
+            <tr><td>other</td><td>Generic / unknown</td><td>Best-effort parse</td><td>Common IP column names attempted</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-tip">
+        <span class="callout-icon">💡</span>
+        <div class="callout-body">
+          <h5>SI Number Parsing</h5>
+          <p><code>normalize.ts</code> understands SI-suffixed numbers in raw CSV columns. For example, <code>"148.17 K"</code> is parsed as <strong>148,170</strong> and <code>"2.3 M"</code> as <strong>2,300,000</strong>. This handles QRadar and SNA exports that abbreviate large byte counts.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         10. SCHEMA
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="schema">
+      <div class="section-header">
+        <div class="section-icon icon-cyan">📐</div>
+        <div class="section-title-text">
+          <h2>Normalized Schema</h2>
+          <span>TypeScript interfaces from @soc/telemetry-shared</span>
+        </div>
+      </div>
+
+      <div class="schema-group">
+        <h4>Asset</h4>
+        <div class="schema-fields">
+          <span class="sf">ip</span><span class="sf">hostname</span><span class="sf">mac</span><span class="sf">country</span><span class="sf">asn</span><span class="sf">username</span><span class="sf">deviceType</span><span class="sf">sourceVendor</span><span class="sf">communicationVolume</span>
+        </div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem;">Represents a unique network endpoint. Assets are merged by IP across vendors — the first-seen hostname/MAC wins; communicationVolume sums across all flows.</p>
+      </div>
+
+      <div class="schema-group">
+        <h4>Flow</h4>
+        <div class="schema-fields">
+          <span class="sf">srcIp</span><span class="sf">dstIp</span><span class="sf">srcPort</span><span class="sf">dstPort</span><span class="sf">protocol</span><span class="sf">bytes</span><span class="sf">packets</span><span class="sf">durationMs</span>
+        </div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem;">A single bidirectional network conversation record. <code>durationMs</code> is always in milliseconds (vendors using seconds are multiplied by 1000).</p>
+      </div>
+
+      <div class="schema-group">
+        <h4>Event</h4>
+        <div class="schema-fields">
+          <span class="sf">ip</span><span class="sf">hostname</span><span class="sf">eventType</span><span class="sf">severity</span><span class="sf">description</span><span class="sf">vendor</span>
+        </div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem;">A security or authentication event. <code>severity</code> is normalised to <code>low</code> | <code>medium</code> | <code>high</code> | <code>critical</code>.</p>
+      </div>
+
+      <div class="schema-group">
+        <h4>Alert</h4>
+        <div class="schema-fields">
+          <span class="sf">srcIp</span><span class="sf">dstIp</span><span class="sf">severity</span><span class="sf">category</span><span class="sf">name</span><span class="sf">description</span><span class="sf">vendor</span>
+        </div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem;">A triggered SIEM/IDS alert with directional IP information.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>shared/src/index.ts — NormalizedData</span><span class="lang-badge">TypeScript</span></div>
+        <pre>
+<span class="kw">export interface</span> <span class="ty">NormalizedData</span> {
+  <span class="ky">assets</span>: <span class="ty">Asset</span>[];
+  <span class="ky">flows</span>:  <span class="ty">Flow</span>[];
+  <span class="ky">events</span>: <span class="ty">Event</span>[];
+  <span class="ky">alerts</span>: <span class="ty">Alert</span>[];
+}</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         11. API ENDPOINTS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="api-endpoints">
+      <div class="section-header">
+        <div class="section-icon icon-green">🔌</div>
+        <div class="section-title-text">
+          <h2>REST API Endpoints</h2>
+          <span>All Express routes exposed on port 3001</span>
+        </div>
+      </div>
+
+      <div class="endpoint-list">
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/health</span>
+            <span class="endpoint-desc">Server liveness check</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Returns <code>{"status":"ok","uptime":&lt;seconds&gt;}</code>. Use to verify the backend is reachable before rendering the UI.</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/payload</span>
+            <span class="endpoint-desc">Full normalised dataset</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Returns the complete <code>NormalizedData</code> object: all assets, flows, events, and alerts ingested from the <code>data/</code> directory (+ any uploaded files). This is the primary data source for the frontend.</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/analysis/incident</span>
+            <span class="endpoint-desc">AI incident analysis report</span>
+          </div>
+          <div class="endpoint-body">
+            <p><strong>Body:</strong> <code>{"context": IncidentAnalysisContextPackage, "provider": "gemini"|"ollama"}</code></p>
+            <p>Assembles a structured prompt from the context package, calls the configured AI provider, strips code fences, and parses the JSON response into a validated incident report. Returns a <code>RATReport</code> object.</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/query</span>
+            <span class="endpoint-desc">Free-form AI question (Ask AI tab)</span>
+          </div>
+          <div class="endpoint-body">
+            <p><strong>Body:</strong> <code>{"question": string, "context": NormalizedData, "provider": "gemini"|"ollama"}</code></p>
+            <p>Injects the full telemetry dataset as context, applies the SOC analyst system prompt, and returns the AI's markdown-formatted answer as a plain string.</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/upload</span>
+            <span class="endpoint-desc">Upload vendor CSVs</span>
+          </div>
+          <div class="endpoint-body">
+            <p><strong>Body:</strong> JSON object where keys are vendor names (<code>qradar</code>, <code>sna</code>, …) and values are <strong>base64-encoded</strong> CSV content strings. The server decodes, saves to <code>data/uploads/</code>, and triggers normalisation.</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/upload/status</span>
+            <span class="endpoint-desc">Upload processing status</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Returns the current upload state: <code>{"status":"idle"|"processing"|"done"|"error", "message": string}</code>. The frontend polls this after POSTing to <code>/api/upload</code>.</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-delete">DELETE</span>
+            <span class="endpoint-path">/api/upload</span>
+            <span class="endpoint-desc">Clear uploaded files</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Deletes all files from <code>data/uploads/</code> and resets the normalised data to the baseline <code>data/</code> CSVs only. Returns <code>{"cleared": true}</code>.</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/raw</span>
+            <span class="endpoint-desc">Raw vendor rows for an IP</span>
+          </div>
+          <div class="endpoint-body">
+            <p><strong>Query params:</strong> <code>?vendor=qradar&amp;ip=10.10.10.21</code></p>
+            <p>Returns the original, un-normalised CSV rows from the specified vendor that contain the given IP address. Used by the Raw Logs tab to show source-of-truth data.</p>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/export/csv</span>
+            <span class="endpoint-desc">Download normalised data as ZIP</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Streams a ZIP archive (<code>Content-Disposition: attachment; filename=soc_export.zip</code>) containing four CSV files: <code>assets.csv</code>, <code>flows.csv</code>, <code>events.csv</code>, <code>alerts.csv</code>. Built with <code>archiver</code> via <code>zipBuilder.ts</code>.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         12. NORMALIZATION ENGINE
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="normalization">
+      <div class="section-header">
+        <div class="section-icon icon-amber">🔄</div>
+        <div class="section-title-text">
+          <h2>Data Normalization Engine</h2>
+          <span>How raw CSVs become NormalizedData</span>
+        </div>
+      </div>
+
+      <p><code>normalize.ts</code> is the core ETL engine. It processes all CSV files from <code>data/</code> and <code>data/uploads/</code>, applies vendor-specific parsers, and produces a unified <code>NormalizedData</code> object.</p>
+
+      <h3>Processing Pipeline</h3>
+      <ol class="step-list">
+        <li><div><strong>Load CSVs</strong> — <code>loadCsv.ts</code> reads each file, strips BOM, and returns an array of row objects keyed by column name.</div></li>
+        <li><div><strong>Vendor dispatch</strong> — Each file is routed to a vendor-specific parser function based on the filename prefix (<code>qradar_</code>, <code>sna_</code>, etc.).</div></li>
+        <li><div><strong>Field extraction</strong> — Parsers map vendor column names to normalised field names. Missing optional fields default to <code>undefined</code>.</div></li>
+        <li><div><strong>SI number parsing</strong> — Byte/packet counts like <code>"148.17 K"</code> are parsed to integers. Supported suffixes: K (×1,000), M (×1,000,000), G (×1,000,000,000).</div></li>
+        <li><div><strong>Asset merging</strong> — All assets are deduplicated by <code>ip</code>. When the same IP appears in multiple vendors, metadata is merged and <code>communicationVolume</code> is summed.</div></li>
+        <li><div><strong>Risk scoring</strong> — Each asset receives a computed risk score based on alert count, maximum alert severity, and communication volume percentile.</div></li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>normalize.ts — SI parser example</span><span class="lang-badge">TypeScript</span></div>
+        <pre>
+<span class="kw">function</span> <span class="fn">parseSI</span>(val: <span class="ty">string</span>): <span class="ty">number</span> {
+  <span class="kw">const</span> <span class="ky">m</span> = val.trim().match(<span class="st">/^([\d.]+)\s*([KMG])?$/i</span>);
+  <span class="kw">if</span> (!m) <span class="kw">return</span> <span class="nm">0</span>;
+  <span class="kw">const</span> <span class="ky">n</span> = parseFloat(m[<span class="nm">1</span>]);
+  <span class="kw">const</span> <span class="ky">mul</span> = { K: <span class="nm">1e3</span>, M: <span class="nm">1e6</span>, G: <span class="nm">1e9</span> }[m[<span class="nm">2</span>]?.toUpperCase()] ?? <span class="nm">1</span>;
+  <span class="kw">return</span> Math.round(n * mul);
+}</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         13. AI ENGINE
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="ai-engine">
+      <div class="section-header">
+        <div class="section-icon icon-violet">🧠</div>
+        <div class="section-title-text">
+          <h2>AI Analysis Engine</h2>
+          <span>Incident analysis and Ask AI internals</span>
+        </div>
+      </div>
+
+      <h3>IncidentAnalysisContextPackage</h3>
+      <p>When the user clicks <em>Run Analysis</em> on an entity, <code>incidentAnalysis.ts</code> assembles a <code>IncidentAnalysisContextPackage</code> containing:</p>
+      <div class="tag-row">
+        <span class="pill pill-cyan">targetIp</span>
+        <span class="pill pill-cyan">relatedAssets</span>
+        <span class="pill pill-cyan">relatedFlows</span>
+        <span class="pill pill-cyan">relatedEvents</span>
+        <span class="pill pill-cyan">relatedAlerts</span>
+        <span class="pill pill-cyan">totalAssets</span>
+        <span class="pill pill-cyan">totalFlows</span>
+        <span class="pill pill-amber">timestamp</span>
+      </div>
+      <p>Only records relevant to the target IP are included to keep the prompt size manageable.</p>
+
+      <h3>Prompt Engineering (<code>incidentPrompt.ts</code>)</h3>
+      <p>The system prompt instructs the model to return a <strong>strict JSON</strong> object — no prose wrapping. Key response fields include <code>riskLevel</code>, <code>summary</code>, <code>indicators</code>, <code>recommendations</code>, and <code>confidence</code>. The user prompt serializes the context package as JSON.</p>
+
+      <h3>JSON Parsing &amp; Validation</h3>
+      <p>The raw AI response is processed by a <code>stripCodeFences()</code> helper that removes markdown backtick blocks before <code>JSON.parse()</code>. Field validation ensures required keys exist; missing optional fields are defaulted. If parsing fails entirely, a structured error response is returned to the frontend.</p>
+
+      <h3>Ask AI System Prompt</h3>
+      <div class="code-block">
+        <div class="code-block-header"><span>System prompt — Ask AI</span><span class="lang-badge">text</span></div>
+        <pre><span class="st">You are a senior SOC analyst assistant. Answer clearly and accurately
+using only the provided telemetry data. Use bullet points for lists.
+Highlight IPs using backticks. Do NOT hallucinate.</span></pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         14. FRONTEND ARCHITECTURE
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="frontend-arch">
+      <div class="section-header">
+        <div class="section-icon icon-cyan">⚛️</div>
+        <div class="section-title-text">
+          <h2>Frontend Architecture</h2>
+          <span>App.tsx responsibilities and data flow</span>
+        </div>
+      </div>
+
+      <h3>App.tsx — Root Component</h3>
+      <p><code>App.tsx</code> is the single source of truth for all global state. Its key responsibilities:</p>
+      <ul>
+        <li><strong>Data fetching</strong>: Calls <code>GET /api/payload</code> on mount and stores the full <code>NormalizedData</code> in a <code>useState</code> hook.</li>
+        <li><strong>Filter state</strong>: Maintains <code>selectedIp</code>, <code>severityFilter</code>, <code>vendorFilter</code>, <code>searchQuery</code>, and <code>activeTab</code>.</li>
+        <li><strong>Derived data (computed client-side)</strong>:
+          <ul>
+            <li><code>filteredFlows</code> — flows involving <code>selectedIp</code> or matching <code>searchQuery</code></li>
+            <li><code>filteredEvents</code> — events filtered by <code>severityFilter</code> and <code>vendorFilter</code></li>
+            <li><code>filteredAlerts</code> — alerts filtered by <code>severityFilter</code></li>
+          </ul>
+        </li>
+        <li><strong>Tab routing</strong>: Renders the correct tab component based on <code>activeTab</code> — no React Router needed.</li>
+        <li><strong>Provider forwarding</strong>: Passes the current AI provider selection down to <code>AskAITab</code> and <code>IncidentAnalysisPanel</code>.</li>
+      </ul>
+
+      <div class="callout callout-note">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-body">
+          <h5>No External State Library</h5>
+          <p>The platform intentionally uses only React's built-in <code>useState</code> and <code>useMemo</code>. All derived state (<code>filteredFlows</code>, etc.) is computed with <code>useMemo</code> to avoid unnecessary recalculations. This keeps the bundle small and the data flow easy to trace.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         15. COMPONENTS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="components">
+      <div class="section-header">
+        <div class="section-icon icon-violet">🧩</div>
+        <div class="section-title-text">
+          <h2>Frontend Components</h2>
+          <span>All 18 components and their roles</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Component</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>App.tsx</td>
+              <td><span class="comp-badge cb-core">core</span></td>
+              <td>Root entry point. Fetches data, owns all global state, routes tabs, and computes filtered derived data with <code>useMemo</code>.</td>
+            </tr>
+            <tr>
+              <td>FilterBar.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>Sticky top bar with IP search input, severity chip filters, vendor selector, and AI provider toggle (Gemini / Ollama).</td>
+            </tr>
+            <tr>
+              <td>DashboardTab.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>KPI cards (total assets, high+ alerts, top talker, protocol count) + protocol distribution bar chart + severity pie chart + top-10 flows table.</td>
+            </tr>
+            <tr>
+              <td>GraphTab.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>Wrapper for <code>CommunicationGraph</code>. Handles IP selection events and passes them up to <code>App.tsx</code>.</td>
+            </tr>
+            <tr>
+              <td>CommunicationGraph.tsx</td>
+              <td><span class="comp-badge cb-chart">chart</span></td>
+              <td>Cytoscape.js force-directed graph. Nodes are IPs; edges are flows weighted by bytes. Node colour encodes maximum alert severity. Click to select entity.</td>
+            </tr>
+            <tr>
+              <td>IpActivityTab.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>IP-centric view: inbound vs. outbound byte timelines, top-port bar chart, event/alert frequency sparklines, and a paginated raw event list.</td>
+            </tr>
+            <tr>
+              <td>RawLogsTab.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>Paginated table of original CSV rows from the selected vendor. Vendor picker, search box, and column-adaptive rendering.</td>
+            </tr>
+            <tr>
+              <td>AskAITab.tsx</td>
+              <td><span class="comp-badge cb-ai">ai</span></td>
+              <td>Chat interface. User types a question, the full <code>NormalizedData</code> snapshot is sent as context to <code>POST /api/query</code>, and the markdown response is rendered via <code>lib/markdown.tsx</code>.</td>
+            </tr>
+            <tr>
+              <td>EntityWorkspace.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>Side panel or modal that appears when an IP is selected. Hosts 6 sub-tabs: Overview, Flows, Events, Alerts, Timeline, AI Analysis.</td>
+            </tr>
+            <tr>
+              <td>IncidentAnalysisPanel.tsx</td>
+              <td><span class="comp-badge cb-ai">ai</span></td>
+              <td>Sub-tab inside EntityWorkspace. Assembles the context package, calls <code>POST /api/analysis/incident</code>, and renders the <code>RATReport</code>.</td>
+            </tr>
+            <tr>
+              <td>DetailsPanel.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>Asset metadata card within EntityWorkspace Overview tab. Displays IP, hostname, MAC, ASN, country, device type, vendor, and risk score badge.</td>
+            </tr>
+            <tr>
+              <td>SequencePanel.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>Event sequence panel showing the chronological event/alert chain for the selected IP with time deltas between events.</td>
+            </tr>
+            <tr>
+              <td>SnakeTimeline.tsx</td>
+              <td><span class="comp-badge cb-chart">chart</span></td>
+              <td>Snake-style (zig-zag row) event timeline rendering events as colour-coded dots on a horizontal time axis. Severity determines dot colour.</td>
+            </tr>
+            <tr>
+              <td>TimelineChart.tsx</td>
+              <td><span class="comp-badge cb-chart">chart</span></td>
+              <td>ECharts line chart showing byte volume over time for the selected IP, with inbound (cyan) and outbound (violet) series.</td>
+            </tr>
+            <tr>
+              <td>SankeyChart.tsx</td>
+              <td><span class="comp-badge cb-chart">chart</span></td>
+              <td>ECharts Sankey diagram showing IP-to-IP flow volume for the selected entity's top conversations.</td>
+            </tr>
+            <tr>
+              <td>UploadModal.tsx</td>
+              <td><span class="comp-badge cb-ui">ui</span></td>
+              <td>Drag-and-drop or file-picker modal. Accepts CSVs per vendor key. Base64-encodes files, POSTs to <code>/api/upload</code>, and polls status.</td>
+            </tr>
+            <tr>
+              <td>RATReport.tsx</td>
+              <td><span class="comp-badge cb-ai">ai</span></td>
+              <td>Renders the structured JSON incident report as a premium card UI: risk badge, summary, indicator list, recommendations, and confidence meter.</td>
+            </tr>
+            <tr>
+              <td>lib/markdown.tsx</td>
+              <td><span class="comp-badge cb-lib">lib</span></td>
+              <td>Custom zero-dependency Markdown → JSX renderer. Supports bold, italic, inline code, fenced code blocks, h1–h3 headings, and unordered lists.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         16. DESIGN SYSTEM
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="design-system">
+      <div class="section-header">
+        <div class="section-icon icon-cyan">🎨</div>
+        <div class="section-title-text">
+          <h2>Design Colour System</h2>
+          <span>All design tokens used in styles.css</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Token</th><th>Hex</th><th>Swatch</th><th>Usage</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>--bg</td>
+              <td>#07101f</td>
+              <td><span class="swatch" style="background:#07101f;"></span></td>
+              <td>Page background — deepest dark navy</td>
+            </tr>
+            <tr>
+              <td>--panel</td>
+              <td>#0e1e38</td>
+              <td><span class="swatch" style="background:#0e1e38;"></span></td>
+              <td>Card / panel backgrounds</td>
+            </tr>
+            <tr>
+              <td>--cyan</td>
+              <td>#4cc9f0</td>
+              <td><span class="swatch" style="background:#4cc9f0;"></span></td>
+              <td>Primary accent, links, key labels, borders, GET badge</td>
+            </tr>
+            <tr>
+              <td>--violet</td>
+              <td>#818cf8</td>
+              <td><span class="swatch" style="background:#818cf8;"></span></td>
+              <td>Secondary accent, Ollama provider indicator, sub-headings</td>
+            </tr>
+            <tr>
+              <td>--green</td>
+              <td>#34d399</td>
+              <td><span class="swatch" style="background:#34d399;"></span></td>
+              <td>Success, Gemini provider, low-severity, positive values</td>
+            </tr>
+            <tr>
+              <td>--amber</td>
+              <td>#fbbf24</td>
+              <td><span class="swatch" style="background:#fbbf24;"></span></td>
+              <td>Warnings, medium-severity alerts, .env files, string syntax</td>
+            </tr>
+            <tr>
+              <td>--red</td>
+              <td>#f87171</td>
+              <td><span class="swatch" style="background:#f87171;"></span></td>
+              <td>High-severity alerts, DELETE badge, error states</td>
+            </tr>
+            <tr>
+              <td>--crimson</td>
+              <td>#ff5d73</td>
+              <td><span class="swatch" style="background:#ff5d73;"></span></td>
+              <td>Critical severity, Vite box in architecture diagram</td>
+            </tr>
+            <tr>
+              <td>--text</td>
+              <td>#dce6f5</td>
+              <td><span class="swatch" style="background:#dce6f5;"></span></td>
+              <td>Primary body text</td>
+            </tr>
+            <tr>
+              <td>--muted</td>
+              <td>#6b82a0</td>
+              <td><span class="swatch" style="background:#6b82a0;"></span></td>
+              <td>Secondary / muted text, file names in tree</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         17. MARKDOWN RENDERING
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="markdown">
+      <div class="section-header">
+        <div class="section-icon icon-violet">📝</div>
+        <div class="section-title-text">
+          <h2>Markdown Rendering</h2>
+          <span>lib/markdown.tsx — custom zero-dependency renderer</span>
+        </div>
+      </div>
+
+      <p>The <code>lib/markdown.tsx</code> module provides a lightweight Markdown-to-JSX renderer that is used in the <strong>Ask AI</strong> tab to display AI responses. It requires no external library (no <code>react-markdown</code>, no <code>remark</code>).</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Markdown Syntax</th><th>Output</th></tr></thead>
+          <tbody>
+            <tr><td><code>**bold**</code></td><td><code>&lt;strong&gt;</code> element</td></tr>
+            <tr><td><code>*italic*</code></td><td><code>&lt;em&gt;</code> element</td></tr>
+            <tr><td><code>`inline code`</code></td><td><code>&lt;code&gt;</code> with cyan styling</td></tr>
+            <tr><td><code>```lang\n...\n```</code></td><td>Fenced code block with <code>&lt;pre&gt;&lt;code&gt;</code></td></tr>
+            <tr><td><code># Heading</code></td><td><code>&lt;h1&gt;</code></td></tr>
+            <tr><td><code>## Heading</code></td><td><code>&lt;h2&gt;</code></td></tr>
+            <tr><td><code>### Heading</code></td><td><code>&lt;h3&gt;</code></td></tr>
+            <tr><td><code>- item</code> or <code>* item</code></td><td>Unordered list <code>&lt;ul&gt;&lt;li&gt;</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-header"><span>lib/markdown.tsx — usage</span><span class="lang-badge">TSX</span></div>
+        <pre>
+<span class="kw">import</span> { <span class="ky">renderMarkdown</span> } <span class="kw">from</span> <span class="st">"../lib/markdown"</span>;
+
+<span class="cm">// In a component:</span>
+&lt;<span class="ky">div</span> className=<span class="st">"markdown-body"</span>&gt;
+  {renderMarkdown(aiResponseText)}
+&lt;/<span class="ky">div</span>&gt;</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         18. TABS GUIDE
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="tabs-guide">
+      <div class="section-header">
+        <div class="section-icon icon-amber">📊</div>
+        <div class="section-title-text">
+          <h2>Dashboard Tabs Usage Guide</h2>
+          <span>How to use each tab effectively</span>
+        </div>
+      </div>
+
+      <div class="panel-box">
+        <h4>📈 Dashboard Tab</h4>
+        <p>Start here for a high-level health overview. The KPI cards give instant situational awareness. Use the protocol distribution chart to spot unusual traffic (e.g., unexpected ICMP spikes). The top-10 flows table shows your biggest bandwidth consumers.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>🕸️ Communication Graph</h4>
+        <p>Use this to identify unusual communication patterns. Nodes sized by communication volume; coloured by max alert severity (green → amber → red → crimson). Zoom and pan freely. Click a node to open the Entity Workspace for that IP. Use the filter bar to isolate high-severity IPs.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>🔍 IP Activity</h4>
+        <p>Deep-dive into a specific IP. The timeline shows inbound vs. outbound byte rates — sudden spikes are worth investigating. The port heatmap reveals which destination ports are being hit. Switch to this tab after clicking a suspicious node in the graph.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>📋 Raw Logs</h4>
+        <p>Use this to verify normalisation fidelity. Select a vendor and search for an IP to see the exact, un-transformed rows. Useful for validating that numeric conversions (e.g., SI parsing) produced the expected results.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>💬 Ask AI</h4>
+        <p>Ask natural-language questions about your telemetry. Example questions: <em>"Which IPs have the highest outbound bytes?"</em>, <em>"Are there any lateral movement indicators?"</em>, <em>"Summarise all critical alerts."</em> The full dataset is injected automatically — you don't need to copy/paste any data.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>🧑‍💼 Entity Workspace — AI Analysis Sub-Tab</h4>
+        <p>For any selected IP, click <strong>Run Incident Analysis</strong> to generate a structured RAT (Risk / Action / Threat) Report. The report includes a risk level badge, a plain-English summary, a list of threat indicators (with IPs highlighted), actionable recommendations, and a confidence percentage. This is the platform's primary threat-hunting workflow.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         19. DATA FLOW
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="data-flow">
+      <div class="section-header">
+        <div class="section-icon icon-green">🌊</div>
+        <div class="section-title-text">
+          <h2>Data Flow Diagram</h2>
+          <span>End-to-end request sequences</span>
+        </div>
+      </div>
+
+      <style>
+        /* ── Data Flow Cards ── */
+        .flow-grid { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+        .flow-card {
+          background: #050d1a;
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          overflow: hidden;
+        }
+        .flow-header {
+          display: flex; align-items: center; gap: 0.75rem;
+          padding: 0.75rem 1.2rem;
+          background: rgba(255,255,255,0.025);
+          border-bottom: 1px solid var(--border);
+        }
+        .flow-num {
+          width: 24px; height: 24px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 0.72rem; font-weight: 800;
+          flex-shrink: 0;
+        }
+        .flow-header h4 { margin: 0; font-size: 0.88rem; font-weight: 700; color: var(--text); }
+        .flow-header span { font-size: 0.75rem; color: var(--muted); margin-left: auto; }
+        .flow-body { padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.55rem; }
+        .flow-step {
+          display: flex; align-items: flex-start; gap: 0.75rem;
+        }
+        .flow-step-connector {
+          display: flex; flex-direction: column; align-items: center;
+          flex-shrink: 0; width: 20px; padding-top: 2px;
+        }
+        .flow-dot {
+          width: 8px; height: 8px;
+          border-radius: 50%;
+          border: 2px solid;
+          flex-shrink: 0;
+        }
+        .flow-line {
+          width: 2px; flex: 1; min-height: 18px;
+          background: var(--border);
+          margin: 2px 0;
+        }
+        .flow-content { flex: 1; padding-top: 0px; }
+        .flow-content p { margin: 0; font-size: 0.82rem; color: var(--text); line-height: 1.55; }
+        .flow-content .sub { color: var(--muted); font-size: 0.78rem; margin-top: 3px; font-family: var(--font-mono); }
+        .flow-badge {
+          display: inline-flex; align-items: center; gap: 0.3rem;
+          font-family: var(--font-mono); font-size: 0.73rem; font-weight: 600;
+          padding: 1px 8px; border-radius: 4px; border: 1px solid;
+          white-space: nowrap;
+        }
+        .fb-get    { background: rgba(52,211,153,0.1);  border-color: rgba(52,211,153,0.3);  color: var(--green); }
+        .fb-post   { background: rgba(76,201,240,0.1);  border-color: rgba(76,201,240,0.3);  color: var(--cyan); }
+        .fb-file   { background: rgba(251,191,36,0.1);  border-color: rgba(251,191,36,0.3);  color: var(--amber); }
+        .fb-ai     { background: rgba(129,140,248,0.1); border-color: rgba(129,140,248,0.3); color: var(--violet); }
+        .fb-gemini { background: rgba(251,191,36,0.1);  border-color: rgba(251,191,36,0.3);  color: var(--amber); }
+        .fb-fn     { background: rgba(76,201,240,0.06); border-color: rgba(76,201,240,0.15); color: var(--muted); font-style: italic; }
+        .fn-cyan   { color: var(--cyan); font-family: var(--font-mono); font-size: 0.82rem; }
+        .fn-green  { color: var(--green); font-family: var(--font-mono); font-size: 0.82rem; }
+        .fn-amber  { color: var(--amber); font-family: var(--font-mono); font-size: 0.82rem; }
+        .fn-violet { color: var(--violet); font-family: var(--font-mono); font-size: 0.82rem; }
+      </style>
+
+      <div class="flow-grid">
+
+        <!-- 1. STARTUP -->
+        <div class="flow-card">
+          <div class="flow-header">
+            <div class="flow-num" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.4);color:var(--green)">1</div>
+            <h4>🚀 Startup Sequence</h4>
+            <span>Server boot &amp; initial data load</span>
+          </div>
+          <div class="flow-body">
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--green)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p>Express server starts on <strong>port 3001</strong></p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--amber)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p>Reads all <span class="fb-file">data/*.csv</span> + any <span class="fb-file">data/uploads/*.csv</span></p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="fn-green">normalize()</span> runs → builds in-memory <code>RuntimeSnapshot</code> {assets, flows, events, alerts}</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--violet)"></div></div>
+              <div class="flow-content">
+                <p>Vite dev server starts on <strong>port 5000</strong>, proxies <code>/api/*</code> → <code>:3001</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. FRONTEND LOAD -->
+        <div class="flow-card">
+          <div class="flow-header">
+            <div class="flow-num" style="background:rgba(76,201,240,0.15);border:1px solid rgba(76,201,240,0.4);color:var(--cyan)">2</div>
+            <h4>🖥 Frontend Initial Load</h4>
+            <span>React mounts → full dataset delivered</span>
+          </div>
+          <div class="flow-body">
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p><code>App.tsx</code> mounts in browser</p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--green)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="flow-badge fb-get">GET</span> <span class="fn-cyan">/api/health</span> → confirms backend is alive</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="flow-badge fb-get">GET</span> <span class="fn-cyan">/api/payload</span> → returns full <code>NormalizedData</code> JSON</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--violet)"></div></div>
+              <div class="flow-content">
+                <p>All 5 dashboard tabs render client-side from cached snapshot — <strong>no further API calls</strong> until filter change</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. UPLOAD -->
+        <div class="flow-card">
+          <div class="flow-header">
+            <div class="flow-num" style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);color:var(--amber)">3</div>
+            <h4>📤 CSV Upload Flow</h4>
+            <span>User replaces vendor data</span>
+          </div>
+          <div class="flow-body">
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--amber)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p>User drops CSVs in <code>UploadModal</code> → files base64-encoded in browser</p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="flow-badge fb-post">POST</span> <span class="fn-cyan">/api/upload</span></p>
+                <p class="sub">Body: { qradar: "base64...", sna: "base64..." }</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--amber)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p>Express decodes → saves to <span class="fn-amber">data/uploads/</span> → invalidates cache</p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--green)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p><span class="fn-green">buildRuntimeSnapshot()</span> re-runs → new <code>NormalizedData</code> returned in response</p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--violet)"></div></div>
+              <div class="flow-content"><p>React state updates → all dashboard tabs re-render with new data instantly</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. INCIDENT ANALYSIS -->
+        <div class="flow-card">
+          <div class="flow-header">
+            <div class="flow-num" style="background:rgba(129,140,248,0.15);border:1px solid rgba(129,140,248,0.4);color:var(--violet)">4</div>
+            <h4>🧠 Incident Analysis Flow</h4>
+            <span>Entity selected → AI generates report</span>
+          </div>
+          <div class="flow-body">
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p>Analyst selects IP → <code>EntityWorkspace</code> opens → clicks <strong>Run Analysis</strong></p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--violet)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p><code>IncidentAnalysisPanel</code> assembles <code>IncidentAnalysisContextPackage</code> {target, relatedFlows, relatedEvents, relatedAlerts, relatedAssets}</p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="flow-badge fb-post">POST</span> <span class="fn-cyan">/api/analysis/incident</span></p>
+                <p class="sub">{ context: {...}, provider: "gemini" | "ollama" }</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--amber)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="fn-green">reloadEnvIfNeeded()</span> → <span class="fn-amber">buildPrompt(context)</span></p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--violet)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="flow-badge fb-gemini">Gemini</span> or <span class="flow-badge fb-ai">Ollama</span> generates JSON response</p>
+                <p class="sub">→ stripCodeFences() → JSON.parse() → field validation</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--green)"></div></div>
+              <div class="flow-content"><p><code>IncidentAnalysisPanel</code> renders severity badge, confidence bar, findings, IOCs, recommendations — all via <code>markdown.tsx</code></p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. ASK AI -->
+        <div class="flow-card">
+          <div class="flow-header">
+            <div class="flow-num" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.4);color:var(--green)">5</div>
+            <h4>💬 Ask AI Chat Flow</h4>
+            <span>Free-form question with telemetry context</span>
+          </div>
+          <div class="flow-body">
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p>User types question in <code>AskAITab</code> → hits Send</p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--violet)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p>Frontend builds context string from current filtered snapshot</p>
+                <p class="sub">+ conversation history appended for multi-turn context</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="flow-badge fb-post">POST</span> <span class="fn-cyan">/api/query</span></p>
+                <p class="sub">{ question: "...", context: "...telemetry text...", provider: "gemini" }</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--amber)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p>SOC analyst system prompt injected → AI returns markdown answer</p>
+                <p class="sub">System: "Answer using ONLY provided data. Do NOT hallucinate."</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--green)"></div></div>
+              <div class="flow-content"><p><span class="fn-green">renderMarkdown(response)</span> → styled chat bubble with bold, code chips, lists</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. EXPORT -->
+        <div class="flow-card">
+          <div class="flow-header">
+            <div class="flow-num" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:var(--red)">6</div>
+            <h4>📥 Export Flow</h4>
+            <span>Download normalized data as ZIP</span>
+          </div>
+          <div class="flow-body">
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--cyan)"></div><div class="flow-line"></div></div>
+              <div class="flow-content"><p>Analyst clicks <strong>Export CSV</strong> button in dashboard</p></div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--green)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="flow-badge fb-get">GET</span> <span class="fn-cyan">/api/export/csv</span></p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--amber)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="fn-amber">exportNormalized.ts</span> serialises assets/flows/events/alerts → 4 CSV strings + <code>manifest.json</code></p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--violet)"></div><div class="flow-line"></div></div>
+              <div class="flow-content">
+                <p><span class="fn-violet">zipBuilder.ts</span> creates in-memory ZIP → streams to HTTP response</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-step-connector"><div class="flow-dot" style="border-color:var(--green)"></div></div>
+              <div class="flow-content"><p>Browser triggers file download: <code>soc-telemetry-export-YYYY-MM-DDTHH-MM-SS.zip</code></p></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         20. TROUBLESHOOTING
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="troubleshooting">
+      <div class="section-header">
+        <div class="section-icon icon-red">🔧</div>
+        <div class="section-title-text">
+          <h2>Troubleshooting</h2>
+          <span>Common issues and how to resolve them</span>
+        </div>
+      </div>
+
+      <div class="panel-box">
+        <h4>❓ No data appears on the Dashboard</h4>
+        <p>Check that <code>data/</code> contains at least one CSV file with the correct vendor prefix. Open the browser DevTools Network tab and inspect the <code>GET /api/payload</code> response. If it returns empty arrays, verify that <code>normalize.ts</code> can read the file paths (try running <code>npm run dev</code> from the repository root, not a subdirectory).</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>❓ Ask AI returns raw HTML or an error instead of an answer</h4>
+        <p>This usually means Vite's proxy is not reaching the backend. Ensure <code>npm run dev</code> started both the backend and frontend. Check that Express is actually running on port 3001 by visiting <code>http://localhost:3001/api/health</code> directly. If the backend is down, the proxy returns Vite's own HTML error page.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>❓ Missing GEMINI_API_KEY error</h4>
+        <p>You have <code>ANALYSIS_PROVIDER=gemini</code> set but no <code>GEMINI_API_KEY</code> in your <code>.env</code>. Either add the key or switch to <code>ANALYSIS_PROVIDER=ollama</code>. Remember: <code>analysisConfig.ts</code> hot-reloads on every request, so you can add the key to <code>.env</code> without restarting the server.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>❓ Ollama requests time out</h4>
+        <p>Local model inference is slow, especially on CPU-only machines. Try: (1) increasing <code>OLLAMA_TIMEOUT_MS</code> in <code>.env</code>, (2) switching to a smaller model (<code>ollama pull qwen3:1.7b</code>), or (3) ensuring Ollama is already warmed up by running a quick <code>ollama run qwen3:4b "hello"</code> first.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>❓ Upload not working</h4>
+        <p>Ensure the <code>data/uploads/</code> directory exists and is writable by the Node.js process. On Windows, check that no antivirus is blocking file creation in that directory. Also verify the POST body is valid JSON with base64 values — the frontend's UploadModal does this encoding automatically.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>❓ Port conflict (EADDRINUSE)</h4>
+        <p>Another process is using port 3001 or 5000. To find and kill it on Windows: <code>netstat -ano | findstr :3001</code> then <code>taskkill /PID &lt;pid&gt; /F</code>. Alternatively, change <code>PORT=3001</code> in <code>.env</code> and update <code>vite.config.ts</code>'s proxy target to match.</p>
+      </div>
+
+      <div class="panel-box">
+        <h4>❓ TypeScript compilation errors</h4>
+        <p>If you see TS errors referencing <code>@soc/telemetry-shared</code>, run <code>npm install</code> from the repo root to ensure workspace symlinks are in place. Then run <code>npm run build</code> in the <code>shared</code> workspace first, as frontend and backend depend on its compiled output.</p>
+      </div>
+    </section>
+
+    <hr />
+
+  </div><!-- end content-wrap -->
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-left">
+      Built with ❤️ by <strong>Ketan &amp; Saaransh</strong> — Cybersecurity Interns 2026 &nbsp;·&nbsp; SOC Visualization Platform v1.0
+    </div>
+    <div class="footer-right">
+      <span class="pill pill-cyan">React 19</span>
+      <span class="pill pill-green">Express.js</span>
+      <span class="pill pill-violet">Ollama</span>
+      <span class="pill pill-amber">Gemini</span>
+    </div>
+  </footer>
+
+</main><!-- end main -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR ACTIVE LINK — IntersectionObserver
+═══════════════════════════════════════════════════════════ */
+(function() {
+  const sections = document.querySelectorAll('.section[id]');
+  const navLinks = document.querySelectorAll('.nav-link');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.getAttribute('id');
+        navLinks.forEach(link => {
+          link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, {
+    rootMargin: '-20% 0px -70% 0px',
+    threshold: 0
+  });
+
+  sections.forEach(s => observer.observe(s));
+
+  // Also handle hero section
+  const hero = document.querySelector('.hero');
+  if (hero) {
+    const heroObserver = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        navLinks.forEach(link => link.classList.remove('active'));
+        const first = document.querySelector('.nav-link');
+        if (first) first.classList.add('active');
+      }
+    }, { threshold: 0.3 });
+    heroObserver.observe(hero);
+  }
+
+  // Smooth highlight on direct click
+  navLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      navLinks.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+    });
+  });
+})();
+</script>
+</body>
+</html>
