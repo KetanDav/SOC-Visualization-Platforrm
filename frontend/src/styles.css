@@ -195,7 +195,7 @@ select {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--accent-cyan);
+  color: var(--cyan);
 }
 
 .upload-modal-close {
@@ -289,7 +289,7 @@ select {
   min-height: 90px;
 }
 .upload-vendor-slot:hover {
-  border-color: var(--accent-cyan);
+  border-color: var(--cyan);
   background: rgba(0, 229, 255, 0.04);
 }
 .upload-vendor-slot.has-file {
@@ -397,7 +397,7 @@ select {
 
 .upload-btn-submit {
   padding: 7px 20px;
-  background: var(--accent-cyan);
+  background: var(--cyan);
   border: none;
   color: #000;
   border-radius: 6px;
