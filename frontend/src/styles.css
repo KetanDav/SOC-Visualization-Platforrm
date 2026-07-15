@@ -504,6 +504,27 @@ select {
   flex-shrink: 0;
 }
 
+.play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--cyan);
+  background: transparent;
+  color: var(--cyan);
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+.play-btn:hover {
+  background: var(--cyan);
+  color: #000;
+}
+
 .timeline-slider {
   width: 140px;
   accent-color: var(--cyan);

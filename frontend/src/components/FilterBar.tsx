@@ -77,20 +77,24 @@ interface FilterBarProps {
   filters: TelemetryFilters;
   playbackIndex: number;
   playbackMax: number;
+  isPlaying: boolean;
   dataTimeMin?: string;
   dataTimeMax?: string;
   onFiltersChange: (filters: TelemetryFilters) => void;
   onPlaybackChange: (value: number) => void;
+  onPlayToggle: () => void;
 }
 
 export function FilterBar({
   filters,
   playbackIndex,
   playbackMax,
+  isPlaying,
   dataTimeMin,
   dataTimeMax,
   onFiltersChange,
   onPlaybackChange,
+  onPlayToggle,
 }: FilterBarProps) {
   const [hintOpen, setHintOpen] = useState(false);
   const [activePreset, setActivePreset] = useState<TimePreset>('all');
@@ -270,6 +274,13 @@ export function FilterBar({
         </div>
 
         <div className="timeline-group">
+          <button
+            className="play-btn"
+            onClick={onPlayToggle}
+            title={isPlaying ? 'Pause playback' : 'Play playback'}
+          >
+            {isPlaying ? '⏸' : '▶'}
+          </button>
           <input
             type="range"
             min={0}

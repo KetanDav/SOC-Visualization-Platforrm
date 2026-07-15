@@ -629,7 +629,7 @@ export function EntityWorkspace({ activeTab, filtered, selectedIp, setSelectedIp
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Timestamp', 'Event', 'Category', 'Severity', 'Source', 'Destination', 'User', 'Domain'].map((col) => (
+                  {['Timestamp', 'Event', 'Category', 'Severity', 'Source', 'Destination', 'User', 'Domain', 'AI'].map((col) => (
                     <th key={col}>{col}</th>
                   ))}
                 </tr>
@@ -675,6 +675,35 @@ export function EntityWorkspace({ activeTab, filtered, selectedIp, setSelectedIp
                     </td>
                     <td>{event.username ?? '-'}</td>
                     <td style={{ color: '#8fa1bc' }}>{event.domain ?? event.url ?? '-'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '4px 11px', borderRadius: 8,
+                          border: '1px solid rgba(129,140,248,0.3)',
+                          background: 'rgba(129,140,248,0.08)',
+                          color: '#818cf8', fontSize: '0.72rem', fontWeight: 700,
+                          cursor: 'pointer', letterSpacing: '0.01em',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(129,140,248,0.16)'; e.currentTarget.style.borderColor = 'rgba(129,140,248,0.5)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(129,140,248,0.08)'; e.currentTarget.style.borderColor = 'rgba(129,140,248,0.3)'; }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAnalyzeIncident({
+                            kind: 'ip',
+                            ip: event.src_ip ?? event.dst_ip ?? undefined,
+                            label: event.event_name,
+                            query: `event:"${event.event_name}"`,
+                          });
+                        }}
+                        title="AI Analyze this event"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        AI Analyze
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

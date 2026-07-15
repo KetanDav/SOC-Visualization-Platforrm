@@ -409,10 +409,12 @@ export default function App() {
         filters={filters}
         playbackIndex={playbackIndex}
         playbackMax={Math.max(0, timeline.length - 1)}
+        isPlaying={isPlaying}
         dataTimeMin={dataTimeRange?.min}
         dataTimeMax={dataTimeRange?.max}
         onFiltersChange={handleFilterChange}
         onPlaybackChange={handlePlaybackSlider}
+        onPlayToggle={() => setIsPlaying(p => !p)}
       />
 
       <ViewTabs activeTab={activeTab} onChange={setActiveTab} />
