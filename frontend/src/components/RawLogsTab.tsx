@@ -35,6 +35,7 @@ export function RawLogsTab({ activeQuery }: RawLogsTabProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalRows, setTotalRows] = useState(0);
+  const [isUploaded, setIsUploaded] = useState<boolean | null>(null);
   const [page, setPage] = useState(0);
   const [localFilter, setLocalFilter] = useState('');
 
@@ -46,6 +47,7 @@ export function RawLogsTab({ activeQuery }: RawLogsTabProps) {
 
   useEffect(() => {
     setPage(0);
+    setIsUploaded(null);
   }, [vendor, ipFromQuery]);
 
   useEffect(() => {
@@ -72,10 +74,11 @@ export function RawLogsTab({ activeQuery }: RawLogsTabProps) {
             throw new Error(`API error ${r.status}`);
           }
         }
-        return r.json() as Promise<{ vendor: string; totalRows: number; rows: Array<Record<string, string>> }>;
+        return r.json() as Promise<{ vendor: string; totalRows: number; rows: Array<Record<string, string>>; isUploaded: boolean }>;
       })
       .then(data => {
         if (!alive) return;
+        setIsUploaded(data.isUploaded ?? false);
         setRows(data.rows);
         setTotalRows(data.totalRows);
         // columns are set by a separate effect so user toggle persists
@@ -263,13 +266,25 @@ export function RawLogsTab({ activeQuery }: RawLogsTabProps) {
             </div>
           )}
 
-          {!loading && !error && columns.length === 0 && (
+          {!loading && !error && isUploaded === false && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <span style={{ fontSize: '2rem' }}>📂</span>
+              <span style={{ color: '#8fa1bc', fontSize: '0.9rem', textAlign: 'center' }}>
+                No uploaded data for <strong style={{ color: cfg.color }}>{cfg.label}</strong>
+              </span>
+              <span style={{ color: '#6b7a99', fontSize: '0.8rem', textAlign: 'center' }}>
+                Use <strong style={{ color: '#dce6f5' }}>↑ Upload CSV</strong> in the top bar to load your own logs for this vendor.
+              </span>
+            </div>
+          )}
+
+          {!loading && !error && isUploaded === true && columns.length === 0 && (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8fa1bc', fontSize: '0.9rem' }}>
               No rows found{ipFromQuery ? ` for IP ${ipFromQuery}` : ''} in {cfg.label}
             </div>
           )}
 
-          {!loading && !error && columns.length > 0 && (
+          {!loading && !error && isUploaded === true && columns.length > 0 && (
             <>
               <div className="table-shell" style={{ flex: 1, minHeight: 0 }}>
                 <table className="data-table" style={{ fontSize: '0.76rem' }}>

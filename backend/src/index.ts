@@ -221,6 +221,16 @@ app.get('/api/raw', async (request, response) => {
       return;
     }
 
+    // Check whether this vendor has an uploaded file (or is using built-in defaults)
+    const uploadedVendors = await getUploadedVendors(uploadsDir);
+    const isUploaded = uploadedVendors.includes(vendor as VendorKey);
+
+    // If not uploaded, return empty — frontend should prompt the user to upload
+    if (!isUploaded) {
+      response.json({ vendor, totalRows: 0, rows: [], isUploaded: false });
+      return;
+    }
+
     const sources = cachedSources ?? await loadSourceRowsWithUploads(uploadsDir);
     if (!cachedSources) cachedSources = sources;
 
@@ -229,7 +239,7 @@ app.get('/api/raw', async (request, response) => {
       rows = rows.filter(row => Object.values(row).some(val => String(val).toLowerCase().includes(ipFilter)));
     }
 
-    response.json({ vendor, totalRows: rows.length, rows });
+    response.json({ vendor, totalRows: rows.length, rows, isUploaded: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     response.status(500).json({ ok: false, message });
