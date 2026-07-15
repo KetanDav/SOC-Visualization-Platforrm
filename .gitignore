@@ -1,0 +1,14 @@
+frontend/dist
+backend/dist
+shared/dist
+dist/
+node_modules/
+*/node_modules/
+*.log
+.DS_Store
+*.tsbuildinfo
+data/normalized/
+.local/
+.env
+.env.*
+!.env.example

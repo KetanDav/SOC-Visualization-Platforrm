@@ -1,0 +1,471 @@
+import cytoscape from 'cytoscape';
+import { useEffect, useRef, useState } from 'react';
+import type { Asset, Flow } from '@soc/telemetry-shared';
+import { protocolTone } from '../lib/telemetry';
+
+interface CommunicationGraphProps {
+  flows: Flow[];
+  assets: Asset[];
+  onSelectIp: (ip: string | null) => void;
+  onFilterQuery: (query: string) => void;
+  selectedIp: string | null;
+  activeQuery: string;
+}
+
+const SUBNET_COLORS: Record<string, string> = {
+  '10.10.10': '#4cc9f0',
+  '10.10.20': '#a78bfa',
+  '10.10.30': '#34d399',
+  '10.10.40': '#f59e0b',
+  '10.10.50': '#60a5fa',
+  '10.10.60': '#f472b6',
+  '10.10.70': '#94a3b8',
+};
+
+const EXTERNAL_COLOR = '#ff5d73';
+
+const getSubnetColor = (ip: string): string => {
+  const prefix = ip.split('.').slice(0, 3).join('.');
+  return SUBNET_COLORS[prefix] ?? EXTERNAL_COLOR;
+};
+
+const isInternal = (ip: string) => ip.startsWith('10.');
+
+const riskToEdgeColor = (risk?: number): string => {
+  if (!risk) return 'rgba(76,201,240,0.35)';
+  if (risk >= 85) return 'rgba(255,93,115,0.75)';
+  if (risk >= 65) return 'rgba(255,184,77,0.65)';
+  if (risk >= 40) return 'rgba(76,201,240,0.55)';
+  return 'rgba(110,231,183,0.4)';
+};
+
+interface SelectionInfo {
+  count: number;
+  ips: string[];
+}
+
+export function CommunicationGraph({
+  flows, assets, onSelectIp, onFilterQuery, selectedIp, activeQuery
+}: CommunicationGraphProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cyRef = useRef<cytoscape.Core | null>(null);
+  const onFilterQueryRef = useRef(onFilterQuery);
+  const onSelectIpRef = useRef(onSelectIp);
+  const savedPositionsRef = useRef<Record<string, { x: number; y: number }>>({});
+  onFilterQueryRef.current = onFilterQuery;
+  onSelectIpRef.current = onSelectIp;
+
+  const [selectionInfo, setSelectionInfo] = useState<SelectionInfo | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const assetMap = new Map(assets.map(a => [a.ip, a]));
+
+    const ipSet = new Set<string>();
+    flows.forEach(f => { ipSet.add(f.src_ip); ipSet.add(f.dst_ip); });
+    assets.forEach(a => ipSet.add(a.ip));
+
+    type EdgeAgg = { src: string; dst: string; bytes: number; risk: number; protocol: string; count: number };
+    const edgeMap = new Map<string, EdgeAgg>();
+    flows.forEach(f => {
+      const key = `${f.src_ip}|${f.dst_ip}`;
+      const existing = edgeMap.get(key);
+      if (existing) {
+        existing.bytes += f.bytes;
+        existing.risk = Math.max(existing.risk, f.risk_score ?? 0);
+        existing.count++;
+      } else {
+        edgeMap.set(key, { src: f.src_ip, dst: f.dst_ip, bytes: f.bytes, risk: f.risk_score ?? 0, protocol: f.protocol ?? 'TCP', count: 1 });
+      }
+    });
+
+    const nodeBytes = new Map<string, number>();
+    edgeMap.forEach(e => {
+      nodeBytes.set(e.src, (nodeBytes.get(e.src) ?? 0) + e.bytes);
+      nodeBytes.set(e.dst, (nodeBytes.get(e.dst) ?? 0) + e.bytes);
+    });
+    const maxBytes = Math.max(...nodeBytes.values(), 1);
+
+    const nodeRisk = new Map<string, number>();
+    flows.forEach(f => {
+      const r = f.risk_score ?? 0;
+      nodeRisk.set(f.src_ip, Math.max(nodeRisk.get(f.src_ip) ?? 0, r));
+      nodeRisk.set(f.dst_ip, Math.max(nodeRisk.get(f.dst_ip) ?? 0, r));
+    });
+
+    const nodes: cytoscape.NodeDefinition[] = Array.from(ipSet).map(ip => {
+      const asset = assetMap.get(ip);
+      const bytes = nodeBytes.get(ip) ?? 0;
+      const risk = nodeRisk.get(ip) ?? 0;
+      const size = 28 + (bytes / maxBytes) * 52;
+      const color = getSubnetColor(ip);
+      const label = asset?.hostname ?? ip;
+      return {
+        data: {
+          id: ip, label: label.length > 16 ? label.slice(0, 14) + '…' : label,
+          fullLabel: label, ip, bytes, risk, size, color,
+          borderColor: risk >= 85 ? '#ff5d73' : risk >= 65 ? '#ffb84d' : color,
+          borderWidth: risk >= 65 ? 3 : 1.5,
+          internal: isInternal(ip),
+        }
+      };
+    });
+
+    const edges: cytoscape.EdgeDefinition[] = Array.from(edgeMap.values()).map((e, i) => ({
+      data: {
+        id: `edge-${i}`,
+        source: e.src, target: e.dst,
+        bytes: e.bytes, risk: e.risk, count: e.count, protocol: e.protocol,
+        color: riskToEdgeColor(e.risk),
+        width: Math.max(1, Math.min(6, 1 + (e.bytes / maxBytes) * 8)),
+      }
+    }));
+
+    if (cyRef.current) cyRef.current.destroy();
+    setSelectionInfo(null);
+
+    // Determine if we have saved positions for all current nodes
+    const saved = savedPositionsRef.current;
+    const allPositioned = nodes.every(n => saved[n.data.id!]);
+    const layoutConfig = allPositioned
+      ? {
+          name: 'preset' as const,
+          positions: (node: cytoscape.NodeSingular) => saved[node.id()] ?? { x: 0, y: 0 },
+          animate: false,
+        }
+      : {
+          name: 'cose' as const,
+          animate: false,
+          nodeRepulsion: () => 8000,
+          idealEdgeLength: () => 120,
+          gravity: 0.6,
+          numIter: 1000,
+          randomize: false,
+        } as unknown as cytoscape.CoseLayoutOptions;
+
+    cyRef.current = cytoscape({
+      container: containerRef.current,
+      elements: { nodes, edges },
+      layout: layoutConfig,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'width': 'data(size)', 'height': 'data(size)',
+            'background-color': 'data(color)', 'background-opacity': 0.85,
+            'border-color': 'data(borderColor)', 'border-width': 'data(borderWidth)',
+            'label': 'data(label)', 'color': '#e7eefb',
+            'font-size': '10px', 'font-family': '"Inter","Outfit",sans-serif', 'font-weight': '600',
+            'text-valign': 'bottom', 'text-halign': 'center', 'text-margin-y': 4,
+            'text-outline-width': 2, 'text-outline-color': '#04091a', 'text-outline-opacity': 0.9,
+            'transition-property': 'background-opacity, border-width',
+            'transition-duration': '200ms',
+          } as unknown as cytoscape.Css.Node
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'border-width': 4, 'border-color': '#ffffff', 'background-opacity': 1,
+          } as unknown as cytoscape.Css.Node
+        },
+        {
+          selector: 'node.dimmed',
+          style: {
+            'background-opacity': 0.18, 'color': 'rgba(231,238,251,0.2)',
+          } as unknown as cytoscape.Css.Node
+        },
+        {
+          selector: 'node.in-selection',
+          style: {
+            'border-width': 3,
+            'border-color': '#4cc9f0',
+            'background-opacity': 1,
+          } as unknown as cytoscape.Css.Node
+        },
+        {
+          selector: 'edge',
+          style: {
+            'line-color': 'data(color)', 'width': 'data(width)',
+            'curve-style': 'bezier', 'target-arrow-shape': 'triangle',
+            'target-arrow-color': 'data(color)', 'arrow-scale': 0.7,
+            'opacity': 0.75,
+          } as unknown as cytoscape.Css.Edge
+        },
+        {
+          selector: 'edge.dimmed',
+          style: { 'opacity': 0.06 } as unknown as cytoscape.Css.Edge
+        },
+        {
+          selector: 'edge.highlighted',
+          style: { 'opacity': 1, 'width': 3 } as unknown as cytoscape.Css.Edge
+        },
+        {
+          selector: 'edge:selected',
+          style: {
+            'opacity': 1,
+            'line-color': '#ffffff',
+            'target-arrow-color': '#ffffff',
+          } as unknown as cytoscape.Css.Edge
+        },
+      ],
+      userZoomingEnabled: true,
+      userPanningEnabled: true,
+      autoungrabify: false,
+      boxSelectionEnabled: true,
+      selectionType: 'additive',
+    });
+
+    const cy = cyRef.current;
+
+    // Layout ran synchronously (animate:false), so positions are already set.
+    // Save them now so the next render uses preset and nodes don't move.
+    cy.nodes().forEach(node => {
+      savedPositionsRef.current[node.id()] = { x: node.position('x'), y: node.position('y') };
+    });
+
+    // Keep positions updated when user manually drags a node
+    cy.on('dragfree', 'node', (e) => {
+      const node = e.target;
+      savedPositionsRef.current[node.id()] = { x: node.position('x'), y: node.position('y') };
+    });
+
+    // ── Tooltip element ─────────────────────────────────────────────────────
+    const tooltip = document.createElement('div');
+    tooltip.className = 'graph-tooltip';
+    tooltip.style.cssText = 'position:fixed;pointer-events:none;display:none;background:rgba(4,10,26,0.97);border:1px solid rgba(76,201,240,0.3);border-radius:10px;padding:10px 14px;font-size:0.78rem;color:#e7eefb;z-index:9999;font-family:Inter,sans-serif;max-width:260px;line-height:1.6;box-shadow:0 4px 24px rgba(0,0,0,0.5)';
+    document.body.appendChild(tooltip);
+
+    const moveTooltip = (e: cytoscape.EventObject) => {
+      const evt = e.originalEvent as MouseEvent;
+      tooltip.style.left = `${evt.clientX + 16}px`;
+      tooltip.style.top  = `${evt.clientY - 10}px`;
+    };
+
+    // ── Cursor via DOM ─────────────────────────────────────────────────────
+    const canvas = containerRef.current?.querySelector('canvas');
+    cy.on('mouseover', 'node edge', () => { if (canvas) canvas.style.cursor = 'pointer'; });
+    cy.on('mouseout',  'node edge', () => { if (canvas) canvas.style.cursor = ''; });
+
+    // ── Selection tracking ─────────────────────────────────────────────────
+    const updateSelection = () => {
+      const selected = cy.$('node:selected');
+      if (selected.length >= 2) {
+        const ips = selected.toArray().map(n => n.data('ip') as string).filter(Boolean);
+        setSelectionInfo({ count: ips.length, ips });
+      } else {
+        setSelectionInfo(null);
+      }
+    };
+
+    cy.on('select unselect', 'node', updateSelection);
+    cy.on('boxselect', updateSelection);
+
+    // ── Node hover ──────────────────────────────────────────────────────────
+    cy.on('mouseover', 'node', (e) => {
+      const node = e.target;
+      cy.batch(() => {
+        cy.elements().addClass('dimmed');
+        node.removeClass('dimmed');
+        node.connectedEdges().removeClass('dimmed').addClass('highlighted');
+        node.connectedEdges().connectedNodes().removeClass('dimmed');
+      });
+      const d = e.target.data();
+      const asset = assetMap.get(d.ip);
+      const selectedCount = cy.$('node:selected').length;
+      tooltip.innerHTML = `
+        <div style="font-weight:700;font-size:0.85rem;color:${d.color};margin-bottom:4px">${d.fullLabel}</div>
+        <div style="color:#8fa1bc">${d.ip}</div>
+        ${asset?.username ? `<div>👤 ${asset.username}</div>` : ''}
+        ${asset?.country ? `<div>🌍 ${asset.country}${asset.asn ? ` · ASN ${asset.asn}` : ''}</div>` : ''}
+        ${asset?.vlan ? `<div style="margin-top:6px">🔀 VLAN ${asset.vlan}</div>` : ''}
+        ${asset?.switchIp || asset?.switchPort ? `<div style="color:#8fa1bc;margin-top:4px">${asset?.switchIp ?? ''}${asset?.switchIp && asset?.switchPort ? ' · ' : ''}${asset?.switchPort ? `Port ${asset.switchPort}` : ''}</div>` : ''}
+        <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(130,155,190,0.15)">
+          <span style="color:#ffb84d">⬆ ${(d.bytes / 1024).toFixed(1)} KB</span>
+          ${d.risk > 0 ? `&nbsp; <span style="color:${d.risk >= 85 ? '#ff5d73' : '#ffb84d'}">⚡ Risk ${d.risk}</span>` : ''}
+        </div>
+        <div style="margin-top:6px;font-size:0.72rem;color:rgba(76,201,240,0.7);border-top:1px solid rgba(130,155,190,0.1);padding-top:5px">
+          ${selectedCount >= 2 ? '⇧+click to add to selection' : '🔍 Click to filter · Drag to box-select'}
+        </div>
+      `;
+      tooltip.style.display = 'block';
+    });
+    cy.on('mousemove', 'node', moveTooltip);
+    cy.on('mouseout', 'node', () => {
+      cy.batch(() => cy.elements().removeClass('dimmed').removeClass('highlighted'));
+      tooltip.style.display = 'none';
+    });
+
+    // ── Edge hover ──────────────────────────────────────────────────────────
+    cy.on('mouseover', 'edge', (e) => {
+      const d = e.target.data();
+      const srcAsset = assetMap.get(d.source);
+      const dstAsset = assetMap.get(d.target);
+      const srcLabel = srcAsset?.hostname ?? d.source;
+      const dstLabel = dstAsset?.hostname ?? d.target;
+      tooltip.innerHTML = `
+        <div style="font-weight:700;font-size:0.82rem;margin-bottom:6px;color:#e7eefb">Connection</div>
+        <div style="margin-bottom:2px"><span style="color:#4cc9f0">${srcLabel}</span> <span style="color:#8fa1bc">${d.source}</span></div>
+        <div style="color:#8fa1bc;font-size:0.8rem;margin:2px 0">↓</div>
+        <div style="margin-bottom:6px"><span style="color:#ffb84d">${dstLabel}</span> <span style="color:#8fa1bc">${d.target}</span></div>
+        <div style="padding-top:6px;border-top:1px solid rgba(130,155,190,0.15);display:flex;gap:10px;flex-wrap:wrap">
+          <span style="color:#4cc9f0">⇒ ${d.protocol}</span>
+          <span style="color:#ffb84d">⬆ ${(d.bytes / 1024).toFixed(1)} KB</span>
+          <span style="color:#8fa1bc">${d.count} flow${d.count !== 1 ? 's' : ''}</span>
+          ${d.risk > 0 ? `<span style="color:${d.risk >= 65 ? '#ff5d73' : '#ffb84d'}">⚡ Risk ${d.risk}</span>` : ''}
+        </div>
+        <div style="margin-top:6px;font-size:0.72rem;color:rgba(76,201,240,0.7);border-top:1px solid rgba(130,155,190,0.1);padding-top:5px">🔍 Click to filter this connection</div>
+      `;
+      tooltip.style.display = 'block';
+    });
+    cy.on('mousemove', 'edge', moveTooltip);
+    cy.on('mouseout', 'edge', () => { tooltip.style.display = 'none'; });
+
+    // ── Node click ─────────────────────────────────────────────────────────
+    cy.on('tap', 'node', (e) => {
+      const ip = e.target.data('ip') as string;
+      const selected = cy.$('node:selected');
+      if (selected.length >= 2) {
+        return;
+      }
+      onSelectIpRef.current(ip);
+      onFilterQueryRef.current(`ip:=${ip}`);
+    });
+
+    // ── Edge click → filter by connection ──────────────────────────────────
+    cy.on('tap', 'edge', (e) => {
+      const d = e.target.data();
+      onFilterQueryRef.current(`src:=${d.source} AND dst:=${d.target}`);
+      onSelectIpRef.current(null);
+    });
+
+    // ── Background click → clear selection ─────────────────────────────────
+    cy.on('tap', (e) => {
+      if (e.target === cy) {
+        onSelectIpRef.current(null);
+        setSelectionInfo(null);
+      }
+    });
+
+    if (selectedIp) cy.$(`[id="${selectedIp}"]`).select();
+
+    return () => {
+      cy.destroy();
+      cyRef.current = null;
+      tooltip.remove();
+      setSelectionInfo(null);
+    };
+  }, [flows, assets]);
+
+  // Keep single-node selection in sync without full re-render
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.nodes().unselect();
+    if (selectedIp) cy.$(`[id="${selectedIp}"]`).select();
+  }, [selectedIp]);
+
+  const handleApplySelection = () => {
+    if (!selectionInfo || selectionInfo.ips.length < 2) return;
+    const query = selectionInfo.ips.map(ip => `ip:=${ip}`).join(' OR ');
+    onFilterQuery(query);
+    onSelectIp(null);
+    cyRef.current?.nodes().unselect();
+    setSelectionInfo(null);
+  };
+
+  const handleClearSelection = () => {
+    cyRef.current?.nodes().unselect();
+    setSelectionInfo(null);
+  };
+
+  return (
+    <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+
+      {/* Box-select hint */}
+      {!selectionInfo && (
+        <div className="graph-select-hint">
+          <span>Drag to box-select · Shift+click to add</span>
+        </div>
+      )}
+
+      {/* Selection action banner */}
+      {selectionInfo && selectionInfo.count >= 2 && (
+        <div className="graph-selection-banner">
+          <span className="graph-selection-count">
+            <span className="graph-selection-dot" />
+            {selectionInfo.count} nodes selected
+          </span>
+          <div className="graph-selection-ips">
+            {selectionInfo.ips.slice(0, 5).map(ip => (
+              <code key={ip} className="graph-selection-ip">{ip}</code>
+            ))}
+            {selectionInfo.ips.length > 5 && (
+              <span className="graph-selection-more">+{selectionInfo.ips.length - 5} more</span>
+            )}
+          </div>
+          <div className="graph-selection-actions">
+            <button className="graph-selection-apply" onClick={handleApplySelection}>
+              Filter to selection
+            </button>
+            <button className="graph-selection-clear" onClick={handleClearSelection}>
+              ✕ Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Active filter badge */}
+      {activeQuery && (
+        <div className="graph-filter-badge">
+          <span className="graph-filter-badge__label">Filtered:</span>
+          <code className="graph-filter-badge__query">{activeQuery}</code>
+          <button
+            className="graph-filter-badge__clear"
+            type="button"
+            title="Clear filter"
+            onClick={() => onFilterQuery('')}
+          >✕</button>
+        </div>
+      )}
+
+      {/* Subnet legend */}
+      <div style={{
+        position: 'absolute', bottom: 12, left: 12,
+        display: 'flex', flexWrap: 'wrap', gap: '6px 10px',
+        padding: '8px 12px', borderRadius: 10,
+        background: 'rgba(4,10,20,0.82)', border: '1px solid rgba(130,155,190,0.12)',
+        maxWidth: 320, fontSize: '0.72rem', fontFamily: 'Inter, sans-serif'
+      }}>
+        {Object.entries(SUBNET_COLORS).map(([subnet, color]) => (
+          <span key={subnet} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#8fa1bc' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+            {subnet}
+          </span>
+        ))}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#8fa1bc' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: EXTERNAL_COLOR, flexShrink: 0 }} />
+          External
+        </span>
+      </div>
+
+      {/* Edge risk legend */}
+      <div style={{
+        position: 'absolute', bottom: 12, right: 12,
+        display: 'flex', flexDirection: 'column', gap: 4,
+        padding: '8px 12px', borderRadius: 10,
+        background: 'rgba(4,10,20,0.82)', border: '1px solid rgba(130,155,190,0.12)',
+        fontSize: '0.72rem', fontFamily: 'Inter, sans-serif', color: '#8fa1bc'
+      }}>
+        <span style={{ fontWeight: 700, marginBottom: 2, color: '#e7eefb' }}>Edge Risk</span>
+        {[['≥85', '#ff5d73'], ['≥65', '#ffb84d'], ['≥40', '#4cc9f0'], ['<40', '#6ee7b7']].map(([label, color]) => (
+          <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 20, height: 2, background: color, borderRadius: 1, flexShrink: 0 }} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
