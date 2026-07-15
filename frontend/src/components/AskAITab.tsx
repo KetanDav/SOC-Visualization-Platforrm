@@ -125,10 +125,20 @@ function ProviderPicker({ anchorRef, current, onPick, onClose }: {
 }
 
 export function AskAITab({ flows, events, alerts, assets }: AskAITabProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem('askai-messages');
+      return saved ? (JSON.parse(saved) as Message[]) : [];
+    } catch { return []; }
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [provider, setProvider] = useState<Provider>('gemini');
+  const [provider, setProvider] = useState<Provider>(() => {
+    try {
+      const saved = localStorage.getItem('askai-provider');
+      return (saved === 'ollama' || saved === 'gemini') ? saved : 'gemini';
+    } catch { return 'gemini'; }
+  });
   const [pickerOpen, setPickerOpen] = useState(false);
   const providerBtnRef = useRef<HTMLButtonElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -136,6 +146,15 @@ export function AskAITab({ flows, events, alerts, assets }: AskAITabProps) {
   const abortRef = useRef<AbortController | null>(null);
 
   const activeProv = providers.find(p => p.id === provider)!;
+
+  // Persist messages and provider to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('askai-messages', JSON.stringify(messages)); } catch { /* quota */ }
+  }, [messages]);
+
+  useEffect(() => {
+    try { localStorage.setItem('askai-provider', provider); } catch { /* quota */ }
+  }, [provider]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
