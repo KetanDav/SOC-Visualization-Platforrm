@@ -111,8 +111,8 @@ select {
   margin-left: auto;
   padding: 5px 14px;
   background: transparent;
-  border: 1px solid var(--accent-cyan);
-  color: var(--accent-cyan);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
   border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 600;
@@ -123,7 +123,7 @@ select {
   white-space: nowrap;
 }
 .upload-csv-btn:hover {
-  background: var(--accent-cyan);
+  background: var(--cyan);
   color: #000;
 }
 
